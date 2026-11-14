@@ -60,11 +60,25 @@ function systemPrompt(b: Body): string {
   ].join("\n");
 }
 
+// Mesmos padrões públicos de src/lib/supabase/config.ts (a função é autocontida de propósito).
+const DEFAULT_SUPABASE_URL = "https://wxcbjwhbaaqmripbdbaz.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_PmHwuM2LEpb8kvP1tnRr_A_2zCbr7-L";
+
+function supabaseConfig(): { url: string; key: string } {
+  let url = DEFAULT_SUPABASE_URL;
+  try {
+    const raw = process.env.VITE_SUPABASE_URL?.trim();
+    if (raw) url = new URL(raw).origin; // descarta "/rest/v1" e afins
+  } catch { /* mantém o padrão */ }
+  const rawKey = process.env.VITE_SUPABASE_ANON_KEY?.trim();
+  const key = rawKey && !rawKey.startsWith("sb_secret_") ? rawKey : DEFAULT_SUPABASE_KEY;
+  return { url, key };
+}
+
 async function authenticated(req: Req): Promise<boolean> {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  const { url, key } = supabaseConfig();
   const auth = req.headers.authorization;
-  if (!url || !key || typeof auth !== "string") return false;
+  if (typeof auth !== "string") return false;
   const r = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: auth, apikey: key } });
   return r.ok;
 }

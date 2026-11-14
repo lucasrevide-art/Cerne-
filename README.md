@@ -2,7 +2,7 @@
 
 React + TS + Vite, Zustand, Supabase. Ordem de setup: GitHub → Supabase (rodar `supabase/schema.sql`) → Vercel (env vars ANTES do 1º deploy).
 
-Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (Publishable key). Variável Vite só vale em build novo.
+Supabase: a Project URL e a Publishable key (públicas) já vêm embutidas em `src/lib/supabase/config.ts`, então o app funciona sem variáveis no Vercel. `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` são opcionais e, se existirem, têm prioridade (variável Vite só vale em build novo). Nunca use uma `sb_secret_...`.
 
 Comandos: `npm run dev | build | test | lint`.
 

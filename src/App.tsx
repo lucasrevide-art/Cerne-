@@ -13,7 +13,6 @@ import { SettingsView } from "./views/SettingsView.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
 import { TaskListView } from "./views/TaskListView.tsx";
 import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
-import { isConfigured } from "./lib/supabase/client.ts";
 import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
 
@@ -45,9 +44,6 @@ export function App() {
     return subscribe();
   }, [userId, load, subscribe, reset]);
 
-  if (!isConfigured) {
-    return <div className="auth"><h1>Cerne</h1><div className="banner">Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (e faça um novo deploy).</div></div>;
-  }
   if (!ready) return null;
   if (!session) return <AuthScreen />;
 

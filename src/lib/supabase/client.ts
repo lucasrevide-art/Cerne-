@@ -1,9 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { resolveConfig } from "./config.ts";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const config = resolveConfig(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-export const isConfigured = Boolean(url && key);
-
-// Placeholders evitam crash em build sem env; a UI mostra aviso de configuração.
-export const supabase = createClient(url ?? "http://localhost", key ?? "missing-key");
+export const supabase = createClient(config.url, config.key);
