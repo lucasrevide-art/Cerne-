@@ -31,6 +31,7 @@ interface DataState {
   notes: Note[];
   recurrences: Recurrence[];
   load: () => Promise<void>;
+  reset: () => void;
   subscribe: () => () => void;
   addTask: (input: Partial<Task> & { title: string }) => Promise<void>;
   updateTask: (id: string, patch: Partial<Task>) => Promise<void>;
@@ -39,7 +40,7 @@ interface DataState {
   setFocus: (id: string | null) => Promise<void>;
   addArea: (name: string) => Promise<void>;
   addProject: (name: string, areaId: string | null) => Promise<void>;
-  addNote: (areaId: string | null) => Promise<Note>;
+  addNote: (areaId: string | null) => Promise<Note | null>;
   updateNote: (id: string, body: string) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
   addSubtask: (taskId: string, title: string) => Promise<void>;
@@ -50,12 +51,29 @@ interface DataState {
   setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<void>;
 }
 
+// Controle de concorrência: escritas em andamento e cargas obsoletas não podem
+// sobrescrever o estado otimista da tela.
+let inflight = 0;
+let loadSeq = 0;
+let reloadTimer: ReturnType<typeof setTimeout> | undefined;
+
+const scheduleReload = () => {
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    if (inflight > 0) scheduleReload();
+    else void useDataStore.getState().load();
+  }, 400);
+};
+
 const guard = async (set: (p: Partial<DataState>) => void, fn: () => Promise<void>) => {
+  inflight++;
   try {
     await fn();
     set({ error: null });
   } catch (e) {
     set({ error: e instanceof Error ? e.message : String(e) });
+  } finally {
+    inflight--;
   }
 };
 
@@ -71,22 +89,36 @@ export const useDataStore = create<DataState>((set, get) => ({
   recurrences: [],
 
   load: async () => {
-    await guard(set, async () => {
+    const seq = ++loadSeq;
+    try {
       const [tasks, subtasks, projects, areas, tags, notes, recurrences] = await Promise.all([
         taskRepository.list(), subtaskRepository.list(), projectRepository.list(),
         areaRepository.list(), tagRepository.list(), noteRepository.list(), recurrenceRepository.list(),
       ]);
-      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, loaded: true });
-    });
+      if (seq !== loadSeq) return; // chegou uma carga mais nova (ou reset): descarta esta
+      if (inflight > 0) return scheduleReload(); // há escrita em andamento: tenta de novo depois
+      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, loaded: true, error: null });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    }
   },
 
-  // Realtime: qualquer mudança remota recarrega (simples e correto para app pessoal).
+  reset: () => {
+    loadSeq++;
+    clearTimeout(reloadTimer);
+    set({ loaded: false, error: null, tasks: [], subtasks: [], projects: [], areas: [], tags: [], notes: [], recurrences: [] });
+  },
+
+  // Realtime: mudanças (inclusive as nossas) agrupadas num único recarregamento.
   subscribe: () => {
     const ch = supabase
       .channel("cerne-sync")
-      .on("postgres_changes", { event: "*", schema: "public" }, () => void get().load())
+      .on("postgres_changes", { event: "*", schema: "public" }, scheduleReload)
       .subscribe();
-    return () => void supabase.removeChannel(ch);
+    return () => {
+      clearTimeout(reloadTimer);
+      void supabase.removeChannel(ch);
+    };
   },
 
   addTask: (input) => guard(set, async () => {
@@ -135,9 +167,17 @@ export const useDataStore = create<DataState>((set, get) => ({
   }),
 
   addNote: async (areaId) => {
-    const n = await noteRepository.create(areaId);
-    set({ notes: [n, ...get().notes] });
-    return n;
+    inflight++;
+    try {
+      const n = await noteRepository.create(areaId);
+      set({ notes: [n, ...get().notes], error: null });
+      return n;
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+      return null;
+    } finally {
+      inflight--;
+    }
   },
 
   updateNote: (id, body) => guard(set, async () => {

@@ -21,6 +21,7 @@ export function App() {
   const { session, ready, init, signOut } = useAuthStore();
   const load = useDataStore((s) => s.load);
   const subscribe = useDataStore((s) => s.subscribe);
+  const reset = useDataStore((s) => s.reset);
   const tasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
@@ -33,11 +34,16 @@ export function App() {
 
   useShortcuts(setView);
   useEffect(() => init(), [init]);
+  // Depender do id (e não do objeto) evita recarregar a cada refresh de token/foco da aba.
+  const userId = session?.user.id;
   useEffect(() => {
-    if (!session) return;
+    if (!userId) {
+      reset(); // logout: não deixar dados da conta anterior em memória
+      return;
+    }
     void load();
     return subscribe();
-  }, [session, load, subscribe]);
+  }, [userId, load, subscribe, reset]);
 
   if (!isConfigured) {
     return <div className="auth"><h1>Cerne</h1><div className="banner">Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (e faça um novo deploy).</div></div>;

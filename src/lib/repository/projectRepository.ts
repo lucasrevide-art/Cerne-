@@ -1,11 +1,11 @@
 import { supabase } from "../supabase/client.ts";
 import { projectFromRow, projectToRow } from "../supabase/mappers.ts";
 import type { Project } from "../../types.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const projectRepository = {
   async list(): Promise<Project[]> {
-    return unwrap(await supabase.from("projects").select("*").order("sort_order")).map(projectFromRow);
+    return (await fetchAll((a, b) => supabase.from("projects").select("*").order("sort_order").order("id").range(a, b))).map(projectFromRow);
   },
   async create(input: Partial<Project> & { name: string }): Promise<Project> {
     return projectFromRow(unwrap(await supabase.from("projects").insert(projectToRow(input)).select().single()));

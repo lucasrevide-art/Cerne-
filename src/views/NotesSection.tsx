@@ -21,7 +21,7 @@ export function NotesSection({ areaId }: { areaId: string }) {
             <small>{new Date(n.updatedAt).toLocaleDateString("pt-BR")}</small>
           </button>
         ))}
-        <button className="note-card new" onClick={async () => setOpenId((await addNote(areaId)).id)}>+ Nova nota</button>
+        <button className="note-card new" onClick={async () => { const n = await addNote(areaId); if (n) setOpenId(n.id); }}>+ Nova nota</button>
       </div>
     </>
   );

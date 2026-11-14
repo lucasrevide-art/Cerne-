@@ -1,12 +1,14 @@
 import { supabase } from "../supabase/client.ts";
 import { taskFromRow, taskToRow } from "../supabase/mappers.ts";
 import type { Task } from "../../types.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const taskRepository = {
   async list(): Promise<Task[]> {
-    const rows = unwrap(await supabase.from("tasks").select("*").order("sort_order"));
-    const links = unwrap(await supabase.from("task_tags").select("task_id, tag_id"));
+    const rows = await fetchAll((a, b) =>
+      supabase.from("tasks").select("*").order("sort_order").order("created_at").order("id").range(a, b));
+    const links = await fetchAll((a, b) =>
+      supabase.from("task_tags").select("task_id, tag_id").order("task_id").order("tag_id").range(a, b));
     const byTask = new Map<string, string[]>();
     for (const l of links) byTask.set(l.task_id, [...(byTask.get(l.task_id) ?? []), l.tag_id]);
     return rows.map((r) => taskFromRow(r, byTask.get(r.id) ?? []));

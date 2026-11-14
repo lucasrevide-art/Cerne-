@@ -32,7 +32,7 @@ export const completedByDay = (tasks: Task[]): [string, Task[]][] => {
   const groups = new Map<string, Task[]>();
   for (const t of tasks) {
     if (t.status !== "completed" || !t.completedAt) continue;
-    const day = t.completedAt.slice(0, 10);
+    const day = todayISO(new Date(t.completedAt)); // dia local, não UTC
     groups.set(day, [...(groups.get(day) ?? []), t]);
   }
   return [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]));

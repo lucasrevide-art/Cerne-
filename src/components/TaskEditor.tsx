@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { todayISO } from "../lib/lenses.ts";
 import { forTask } from "../lib/subtasks.ts";
 import { describe } from "../lib/recurrence.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -47,15 +48,22 @@ export function TaskEditor() {
   const set = <K extends keyof Task>(k: K, v: Task[K]) => setDraft({ ...draft, [k]: v });
 
   const save = async () => {
+    const wasCompleted = task?.status === "completed";
+    const nowCompleted = draft.status === "completed";
+    // Horário precisa de um dia, senão o bloco some da agenda.
+    const whenDate = draft.startTime && !draft.whenDate && draft.when !== "today" && draft.when !== "evening" ? todayISO() : draft.whenDate;
     const patch: Partial<Task> = {
       title: draft.title.trim() || draft.title,
       notes: draft.notes,
-      when: draft.whenDate ? "date" : draft.when === "date" ? null : draft.when,
-      whenDate: draft.whenDate,
+      when: whenDate ? "date" : draft.when === "date" ? null : draft.when,
+      whenDate,
       deadline: draft.deadline,
       startTime: draft.startTime,
       durationMinutes: draft.startTime ? draft.durationMinutes ?? 60 : null,
       status: draft.status,
+      // Mesma regra de toggleComplete/movePatch: concluir carimba, reabrir limpa, foco sai.
+      ...(nowCompleted && !wasCompleted ? { completedAt: new Date().toISOString(), isFocus: false } : {}),
+      ...(!nowCompleted && wasCompleted ? { completedAt: null } : {}),
       areaId: draft.areaId,
       projectId: draft.projectId,
       tagIds: draft.tagIds,

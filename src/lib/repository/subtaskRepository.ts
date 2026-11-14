@@ -1,11 +1,11 @@
 import { supabase } from "../supabase/client.ts";
 import { subtaskFromRow } from "../supabase/mappers.ts";
 import type { Subtask } from "../../types.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const subtaskRepository = {
   async list(): Promise<Subtask[]> {
-    return unwrap(await supabase.from("subtasks").select("*").order("sort_order")).map(subtaskFromRow);
+    return (await fetchAll((a, b) => supabase.from("subtasks").select("*").order("sort_order").order("id").range(a, b))).map(subtaskFromRow);
   },
   async create(taskId: string, title: string, sortOrder: number): Promise<Subtask> {
     return subtaskFromRow(

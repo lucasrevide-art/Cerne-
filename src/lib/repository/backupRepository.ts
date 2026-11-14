@@ -1,12 +1,20 @@
 import { supabase } from "../supabase/client.ts";
 import { TABLES, chunk, stripOwner, type Tables } from "../backup.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const backupRepository = {
   /** Exporta as linhas cruas (RLS já restringe ao usuário logado). */
   async exportAll(): Promise<Tables> {
     const out = {} as Tables;
-    for (const t of TABLES) out[t] = unwrap(await supabase.from(t).select("*")) as Record<string, unknown>[];
+    for (const t of TABLES) {
+      // task_tags não tem id: a chave composta dá a ordem estável.
+      const order = t === "task_tags" ? ["task_id", "tag_id"] : ["id"];
+      out[t] = (await fetchAll((a, b) => {
+        let q = supabase.from(t).select("*");
+        for (const col of order) q = q.order(col);
+        return q.range(a, b);
+      })) as Record<string, unknown>[];
+    }
     return out;
   },
 

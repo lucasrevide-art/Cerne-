@@ -1,3 +1,4 @@
+import { shortDate } from "../lib/format.ts";
 import { progress } from "../lib/subtasks.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
@@ -30,7 +31,7 @@ export function TaskRow({ task }: { task: Task }) {
       ))}
       {sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
       {recurring && <span className="chip" title="Recorrente">↻</span>}
-      {task.deadline && <span className="chip">prazo {task.deadline.slice(5).split("-").reverse().join("/")}</span>}
+      {task.deadline && <span className="chip">prazo {shortDate(task.deadline)}</span>}
       {!done && (
         <button className={`star${task.isFocus ? " on" : ""}`} aria-label="A Única Coisa" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>
       )}

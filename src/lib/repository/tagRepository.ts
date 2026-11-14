@@ -1,11 +1,11 @@
 import { supabase } from "../supabase/client.ts";
 import { tagFromRow } from "../supabase/mappers.ts";
 import type { Tag } from "../../types.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const tagRepository = {
   async list(): Promise<Tag[]> {
-    return unwrap(await supabase.from("tags").select("*").order("name")).map(tagFromRow);
+    return (await fetchAll((a, b) => supabase.from("tags").select("*").order("name").order("id").range(a, b))).map(tagFromRow);
   },
   async create(input: Partial<Tag> & { name: string }): Promise<Tag> {
     return tagFromRow(unwrap(await supabase.from("tags").insert(input).select().single()));

@@ -68,7 +68,7 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
     if (!q.trim()) return base;
 
     const create: Item = {
-      id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "Inbox", group: "Ação",
+      id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "⇧↵ · Inbox", group: "Ação",
       run: done(() => void addTask({ title: q.trim() })),
     };
     const taskHits = rank(q, tasks.filter((t) => t.status === "open" || t.status === "waiting"), (t) => t.title)
@@ -80,7 +80,8 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
         id: "n" + n.id, label: noteTitle(n.body), hint: "Nota", group: "Notas",
         run: done(() => n.areaId && go({ kind: "area", id: n.areaId })),
       }));
-    return [create, ...rank(q, base, (i) => i.label), ...taskHits, ...noteHits];
+    // Criar fica por último: Enter navega para o melhor resultado; ⇧↵ cria.
+    return [...rank(q, base, (i) => i.label), ...taskHits, ...noteHits, create];
   }, [open, q, tasks, areas, projects, notes, go, close, openEditor, addTask]);
 
   useEffect(() => {
@@ -101,7 +102,10 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") { e.preventDefault(); setIdx(Math.min(cur + 1, items.length - 1)); }
             else if (e.key === "ArrowUp") { e.preventDefault(); setIdx(Math.max(cur - 1, 0)); }
-            else if (e.key === "Enter") { e.preventDefault(); items[cur]?.run(); }
+            else if (e.key === "Enter") {
+              e.preventDefault();
+              (e.shiftKey ? items.find((i) => i.id === "create") : items[cur])?.run();
+            }
             else if (e.key === "Escape") close();
           }}
         />

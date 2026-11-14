@@ -74,11 +74,19 @@ export default async function handler(req: Req, res: Res) {
   if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "GEMINI_API_KEY não configurada no servidor." });
   if (!(await authenticated(req))) return res.status(401).json({ error: "Não autenticado." });
 
-  const body = (typeof req.body === "string" ? JSON.parse(req.body) : req.body ?? {}) as Body;
+  let body: Body;
+  try {
+    body = (typeof req.body === "string" ? JSON.parse(req.body) : req.body ?? {}) as Body;
+  } catch {
+    return res.status(400).json({ error: "Corpo da requisição inválido." });
+  }
   if (!body.audio) return res.status(400).json({ error: "Áudio ausente." });
   if (body.audio.length > MAX_BASE64) return res.status(413).json({ error: "Áudio longo demais." });
 
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+  let r: Response;
+  try {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    signal: AbortSignal.timeout(25_000),
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
     body: JSON.stringify({
@@ -92,7 +100,10 @@ export default async function handler(req: Req, res: Res) {
       }],
       generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.1 },
     }),
-  });
+    });
+  } catch {
+    return res.status(504).json({ error: "A IA demorou demais para responder. Tente de novo." });
+  }
 
   if (!r.ok) {
     const detail = await r.text();

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { progress } from "../lib/subtasks.ts";
-import { COLUMNS, byColumn, dropOrder, movePatch, type Column } from "../lib/board.ts";
+import { COLUMNS, byColumn, columnOf, dropOrder, movePatch, type Column } from "../lib/board.ts";
+import { shortDate } from "../lib/format.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
@@ -39,12 +40,12 @@ export function BoardView({ projectId, areaId }: { projectId: string; areaId: st
         onDragStart={() => setDragId(t.id)}
         onDragEnd={() => { setDragId(null); setOver(null); }}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.stopPropagation(); drop(columnOfCard(t), t.id); }}
+        onDrop={(e) => { e.stopPropagation(); drop(columnOf(t), t.id); }}
         onClick={() => openEditor(t.id)}
       >
         <span className="card-title">{t.title}</span>
         <div className="card-meta">
-          {t.deadline && <span>prazo {t.deadline.slice(5).split("-").reverse().join("/")}</span>}
+          {t.deadline && <span>prazo {shortDate(t.deadline)}</span>}
           {sub.total > 0 && <span>☑ {sub.done}/{sub.total}</span>}
           {tagNames.map((g) => <span key={g!.id} className="chip">{g!.name}</span>)}
           {t.status !== "completed" && (
@@ -87,5 +88,3 @@ export function BoardView({ projectId, areaId }: { projectId: string; areaId: st
     </div>
   );
 }
-
-const columnOfCard = (t: Task): Column => (t.status === "completed" ? "done" : t.boardStage);

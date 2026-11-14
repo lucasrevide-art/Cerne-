@@ -1,11 +1,11 @@
 import { supabase } from "../supabase/client.ts";
 import { areaFromRow, areaToRow } from "../supabase/mappers.ts";
 import type { Area } from "../../types.ts";
-import { unwrap } from "./util.ts";
+import { fetchAll, unwrap } from "./util.ts";
 
 export const areaRepository = {
   async list(): Promise<Area[]> {
-    return unwrap(await supabase.from("areas").select("*").order("sort_order")).map(areaFromRow);
+    return (await fetchAll((a, b) => supabase.from("areas").select("*").order("sort_order").order("id").range(a, b))).map(areaFromRow);
   },
   async create(input: Partial<Area> & { name: string }): Promise<Area> {
     return areaFromRow(unwrap(await supabase.from("areas").insert(areaToRow(input)).select().single()));
