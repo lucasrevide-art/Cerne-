@@ -9,6 +9,7 @@ import { noteRepository } from "../lib/repository/noteRepository.ts";
 import { recurrenceRepository } from "../lib/repository/recurrenceRepository.ts";
 import { addDays } from "../lib/agenda.ts";
 import { todayISO } from "../lib/lenses.ts";
+import { forTask } from "../lib/subtasks.ts";
 import { daysBetween, nextOccurrence } from "../lib/recurrence.ts";
 import type { Area, Note, Project, Recurrence, Subtask, Tag, Task } from "../types.ts";
 
@@ -220,6 +221,11 @@ async function spawnNext(
     startTime: task.startTime, durationMinutes: task.durationMinutes,
     boardStage: "todo", sortOrder: task.sortOrder,
   });
+  // Subtarefas voltam como abertas na próxima ocorrência.
+  const clones: Subtask[] = [];
+  for (const st of forTask(get().subtasks, task.id)) {
+    clones.push(await subtaskRepository.create(created.id, st.title, st.sortOrder));
+  }
   await recurrenceRepository.remove(rec.id);
   const newRec = await recurrenceRepository.create({
     taskId: created.id, type: rec.type, interval: rec.interval, weekdays: rec.weekdays,
@@ -227,6 +233,7 @@ async function spawnNext(
   });
   set({
     tasks: [...get().tasks, created],
+    subtasks: [...get().subtasks, ...clones],
     recurrences: [...get().recurrences.filter((r) => r.id !== rec.id), newRec],
   });
 }
