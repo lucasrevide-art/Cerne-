@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
+import { VoiceButton } from "./components/VoiceButton.tsx";
 import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
 import type { SimpleView, View } from "./lib/nav.ts";
 import { AuthScreen } from "./components/AuthScreen.tsx";
@@ -148,6 +149,7 @@ export function App() {
       </main>
       <TaskEditor />
       <PomodoroWidget />
+      <VoiceButton />
       <CommandPalette go={setView} />
     </div>
   );
