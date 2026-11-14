@@ -1,100 +1,159 @@
+import { useEffect, useState } from "react";
 import type { View } from "../lib/nav.ts";
 import { useDataStore } from "../stores/dataStore.ts";
+import { archived, areaOf } from "../lib/workspaces.ts";
+import { boardTasks } from "../lib/board.ts";
+import { todayISO } from "../lib/lenses.ts";
+import { portalRepository, type PortalTask } from "../lib/repository/portalRepository.ts";
+import { QuickAdd } from "../components/QuickAdd.tsx";
+import { WorkspaceActions } from "../components/WorkspaceActions.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { NotesSection } from "./NotesSection.tsx";
 import { TaskListView } from "./TaskListView.tsx";
+import { TaskRow } from "../components/TaskRow.tsx";
+import type { Area, Project } from "../types.ts";
 
+type Tab = "overview" | "tasks" | "projects" | "notes";
 type Mode = "list" | "board";
-interface Common { go: (v: View) => void; mode: Mode; setMode: (m: Mode) => void }
+type Props = { id: string; kind: "area" | "project"; go: (view: View) => void; noteId?: string; initialTab?: Tab };
+const labels: Record<Tab, string> = { overview: "Visão geral", tasks: "Tarefas", projects: "Projetos", notes: "Notas" };
 
-function ModeToggle({ mode, setMode, go }: Common) {
-  const custom = useDataStore((s) => s.customColumns);
-  return (
-    <div className="mode-row">
-      <div className="seg">
-        <button className={mode === "board" ? "on" : ""} onClick={() => setMode("board")}>Quadro</button>
-        <button className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>Lista</button>
-      </div>
-      {custom && mode === "board" && (
-        <button className="link-btn" onClick={() => go({ kind: "settings" })}>Gerenciar colunas</button>
-      )}
+export function GroupList({ groups, go, kind }: { groups: (Area | Project)[]; go: Props["go"]; kind: Props["kind"] }) {
+  const render = (group: Area | Project) => (
+    <div className="project-card group-card" key={group.id}>
+      <button className="group-link" onClick={() => go({ kind, id: group.id })}>
+        <strong>{group.name}</strong>
+        {"status" in group && group.shared !== undefined && <span>{group.shared ? "Compartilhado" : "Interno"}</span>}
+      </button>
+      <WorkspaceActions group={group} onPreview={kind === "area" ? () => go({ kind: "portal", id: group.id, preview: true }) : undefined} />
     </div>
   );
-}
-
-/** Área: seus projetos, as tarefas da área e as notas. */
-export function AreaView({ id, ...common }: Common & { id: string }) {
-  const tasks = useDataStore((s) => s.tasks);
-  const areas = useDataStore((s) => s.areas);
-  const projects = useDataStore((s) => s.projects);
-  const addProject = useDataStore((s) => s.addProject);
-  const area = areas.find((a) => a.id === id);
-  const own = projects.filter((p) => p.areaId === id && p.status === "active");
-  const loose = tasks.filter((t) => t.areaId === id && !t.projectId && t.status === "open");
-  const openCount = (projectId: string) => tasks.filter((t) => t.projectId === projectId && (t.status === "open" || t.status === "waiting")).length;
-
+  const active = groups.filter((g) => !g.deletedAt && !archived(g));
+  const archive = groups.filter((g) => !g.deletedAt && archived(g));
+  const deleted = groups.filter((g) => g.deletedAt);
   return (
     <>
-      <div className="crumbs">Área</div>
-      <h2>{area?.name ?? "Área"}</h2>
-
-      <div className="day-title">Projetos de {area?.name}</div>
-      <div className="project-grid">
-        {own.map((p) => {
-          const n = openCount(p.id);
-          return (
-            <button key={p.id} className="project-card" onClick={() => common.go({ kind: "project", id: p.id })}>
-              <strong>{p.name}</strong>
-              <span>{n === 0 ? "Sem tarefas abertas" : n === 1 ? "1 tarefa aberta" : `${n} tarefas abertas`}</span>
-            </button>
-          );
-        })}
-        <form
-          className="project-card new"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
-            const name = input.value.trim();
-            if (name) void addProject(name, id);
-            input.value = "";
-          }}
-        >
-          <input name="name" placeholder="+ Novo projeto" aria-label={`Novo projeto em ${area?.name ?? "área"}`} />
-        </form>
-      </div>
-
-      <div className="day-title">Tarefas</div>
-      <ModeToggle {...common} />
-      {common.mode === "list"
-        ? <TaskListView title="" tasks={loose} defaults={{ areaId: id }} emptyText="Nenhuma tarefa solta nesta área." />
-        : <BoardView scope={{ kind: "area", id }} />}
-
-      <NotesSection areaId={id} key={id} />
+      {active.length ? <div className="project-grid">{active.map(render)}</div> : <p className="empty">Nenhum {kind === "area" ? "espaço ativo" : "projeto ativo"}.</p>}
+      {!!archive.length && <details className="group-history"><summary>Arquivados ({archive.length})</summary><div className="project-grid">{archive.map(render)}</div></details>}
+      {!!deleted.length && <details className="group-history"><summary>Lixeira ({deleted.length})</summary><div className="project-grid">{deleted.map(render)}</div></details>}
     </>
   );
 }
 
-/** Projeto: sempre dentro de uma área, com suas tarefas. */
-export function ProjectView({ id, ...common }: Common & { id: string }) {
+export function AreasView({ go }: { go: Props["go"] }) {
+  const areas = useDataStore((s) => s.areas);
+  const projects = useDataStore((s) => s.projects);
+  const addArea = useDataStore((s) => s.addArea);
+  const [creating, setCreating] = useState(false);
+  const legacy = projects.filter((p) => !p.areaId);
+  return (
+    <>
+      <header className="page-head"><h2>Áreas</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : "Nova área"}</button></header>
+      {creating && <QuickAdd label="Nome da área" button="Criar área" submit={async (name) => {
+        const saved = await addArea(name);
+        if (saved) setCreating(false);
+        return saved;
+      }} />}
+      <GroupList groups={areas} go={go} kind="area" />
+      {!!legacy.length && <section><h3>Projetos sem área</h3><GroupList groups={legacy} go={go} kind="project" /></section>}
+    </>
+  );
+}
+
+export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
   const tasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
-  const project = projects.find((p) => p.id === id);
-  const area = areas.find((a) => a.id === project?.areaId);
-  const own = tasks.filter((t) => t.projectId === id && t.status === "open");
+  const addProject = useDataStore((s) => s.addProject);
+  const portal = useDataStore((s) => s.portalEnabled);
+  const project = kind === "project" ? projects.find((p) => p.id === id) : undefined;
+  const area = areas.find((a) => a.id === (kind === "area" ? id : project?.areaId));
+  const group = kind === "area" ? area : project;
+  const [tab, setTab] = useState<Tab>(initialTab ?? (kind === "area" ? "overview" : "tasks"));
+  const [mode, setMode] = useState<Mode>(() => localStorage.getItem(`cerne:modo:${id}`) === "list" ? "list" : "board");
+  const [filter, setFilter] = useState(() => localStorage.getItem(`cerne:filtro:${id}`) ?? "");
+  const [reviews, setReviews] = useState<PortalTask[]>([]);
+  const [reviewError, setReviewError] = useState("");
+  const areaId = area?.id ?? null;
+
+  useEffect(() => {
+    if (tab !== "overview" || !portal || !areaId || !area || area.deletedAt || archived(area)) return;
+    let current = true;
+    portalRepository.area(areaId).then((space) => {
+      if (current) { setReviews(space.tasks); setReviewError(""); }
+    }).catch((e: Error) => { if (current) setReviewError(e.message); });
+    return () => { current = false; };
+  }, [tab, portal, areaId, area, tasks]);
+
+  if (!group) return <p className="empty">Este espaço está indisponível.</p>;
+  const inactive = group.deletedAt || archived(group) || area?.deletedAt || (area && archived(area));
+  const areaProjects = projects.filter((p) => p.areaId === id);
+  const inScope = tasks.filter((t) => kind === "project" ? t.projectId === id :
+    areaOf(t, projects) === id && (!t.projectId || areaProjects.some((p) => p.id === t.projectId && !p.deletedAt && !archived(p))));
+  const selected = filter === "none" || areaProjects.some((p) => p.id === filter && !p.deletedAt && !archived(p)) ? filter : "";
+  const filtered = inScope.filter((t) => !selected || (selected === "none" ? !t.projectId : t.projectId === selected));
+  const visible = boardTasks(filtered, kind === "project" ? { kind, id } : { kind: "all" });
+  const pending = reviews.filter((t) => t.review?.kind === "requested" && t.review.version === t.content_version);
+  const today = todayISO();
+  const due = inScope.filter((t) => t.status !== "completed" && t.status !== "canceled" && t.deadline)
+    .sort((a, b) => a.deadline!.localeCompare(b.deadline!)).slice(0, 6);
+  const defaults = { areaId, projectId: project?.id ?? (selected !== "none" ? selected || null : null) };
 
   return (
     <>
-      <div className="crumbs">
-        {area
-          ? <><button className="link-btn" onClick={() => common.go({ kind: "area", id: area.id })}>{area.name}</button> › Projeto</>
-          : "Projeto"}
+      <nav className="crumbs" aria-label="Localização">
+        <button className="link-btn" onClick={() => go({ kind: "areas" })}>Áreas</button>
+        {project && area && <> › <button className="link-btn" onClick={() => go({ kind: "area", id: area.id })}>{area.name}</button></>}
+        {" › "}<span aria-current="page">{group.name}</span>
+      </nav>
+      <header className="page-head">
+        <div><h2>{group.name}</h2>{(project?.notes || area?.description && !project) && <p className="workspace-description">{project ? project.notes : area?.description}</p>}</div>
+        <WorkspaceActions group={group} onPreview={!project ? () => go({ kind: "portal", id, preview: true }) : undefined} />
+      </header>
+      {inactive && <p className="banner">{group.deletedAt || area?.deletedAt ? "Na lixeira" : "Arquivado"}. Restaure o espaço para voltar a trabalhar nele.</p>}
+      <div className="workspace-tabs" aria-label="Seções do espaço">
+        {(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "notes"] as const)).map((key) => (
+          <button key={key} aria-pressed={tab === key} onClick={() => setTab(key)}>{labels[key]}</button>
+        ))}
       </div>
-      <h2>{project?.name ?? "Projeto"}</h2>
-      <ModeToggle {...common} />
-      {common.mode === "list"
-        ? <TaskListView title="" tasks={own} defaults={{ projectId: id, areaId: project?.areaId ?? null }} />
-        : <BoardView scope={{ kind: "project", id }} />}
+      {tab === "overview" && (
+        <div className="overview">
+          <section><h3>Próximas entregas</h3>{due.length ? due.map((t) => <TaskRow key={t.id} task={t} readOnly={!!inactive} />) :
+            <p className="empty">Defina um prazo de entrega em uma tarefa para acompanhá-la aqui.</p>}
+            {!!due.filter((t) => t.deadline! < today).length && <small className="error">Há entregas atrasadas.</small>}
+          </section>
+          {portal && !inactive && <section><h3>Aguardando aprovação</h3>{reviewError ? <p role="alert" className="error">{reviewError}</p> : pending.length ? pending.map((t) => {
+            const task = inScope.find((item) => item.id === t.id);
+            return task && <TaskRow key={task.id} task={task} />;
+          }) : <p className="empty">Nenhuma entrega aguardando aprovação.</p>}
+          {reviews.some((t) => t.review && t.review.version !== t.content_version) && <p className="empty">Há entregas com nova versão que precisam ser revisadas.</p>}</section>}
+          <section><h3>Projetos ativos</h3><GroupList groups={areaProjects.filter((p) => !p.deletedAt && !archived(p) && p.status === "active")} go={go} kind="project" /></section>
+        </div>
+      )}
+      {tab === "tasks" && (
+        <>
+          <div className="mode-row task-toolbar">
+            <div className="seg">
+              {(["board", "list"] as const).map((key) => <button key={key} aria-pressed={key === mode} className={key === mode ? "on" : ""} onClick={() => {
+                setMode(key); localStorage.setItem(`cerne:modo:${id}`, key);
+              }}>{key === "board" ? "Quadro" : "Lista"}</button>)}
+            </div>
+            {kind === "area" && <select aria-label="Filtrar por projeto" value={selected} onChange={(e) => {
+              setFilter(e.target.value); localStorage.setItem(`cerne:filtro:${id}`, e.target.value);
+            }}>
+              <option value="">Todos os projetos</option><option value="none">Sem projeto</option>
+              {areaProjects.filter((p) => !p.deletedAt && !archived(p)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>}
+          </div>
+          {mode === "list" ? <TaskListView title="" tasks={visible} readOnly={!!inactive} defaults={inactive ? undefined : defaults} /> :
+            <BoardView tasks={visible} home={defaults} readOnly={!!inactive} showProject={kind === "area"} />}
+        </>
+      )}
+      {tab === "projects" && <>
+        {!inactive && <QuickAdd label="Nome do novo projeto" button="Criar projeto" submit={(name) => addProject(name, id)} />}
+        <GroupList groups={areaProjects} go={go} kind="project" />
+      </>}
+      {tab === "notes" && <NotesSection areaId={areaId} projectId={project?.id} readOnly={!!inactive} noteId={noteId} />}
     </>
   );
 }

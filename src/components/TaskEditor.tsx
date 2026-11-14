@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { ItemFiles } from "./ItemFiles.tsx";
+import { TaskActivity } from "./TaskActivity.tsx";
+import { archived, inInbox, workflow } from "../lib/workspaces.ts";
+import { columnIdOf, movePatch } from "../lib/board.ts";
 import { todayISO } from "../lib/lenses.ts";
 import { projectsForArea } from "../lib/dashboard.ts";
 import { forTask } from "../lib/subtasks.ts";
@@ -14,6 +18,11 @@ export function TaskEditor() {
   const id = useUiStore((s) => s.editingTaskId);
   const close = useUiStore((s) => s.closeEditor);
   const tasks = useDataStore((s) => s.tasks);
+  const columns = useDataStore((s) => s.columns);
+  const scoped = useDataStore((s) => s.scoped);
+  const portal = useDataStore((s) => s.portalEnabled);
+  const load = useDataStore((s) => s.load);
+  const error = useDataStore((s) => s.error);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
   const tags = useDataStore((s) => s.tags);
@@ -28,33 +37,48 @@ export function TaskEditor() {
   const removeTask = useDataStore((s) => s.removeTask);
   const task = tasks.find((t) => t.id === id);
   const [draft, setDraft] = useState<Task | null>(null);
+  const [original, setOriginal] = useState<Task | null>(null);
   const [rec, setRec] = useState<RecDraft>({ type: "", interval: 1, weekdays: [] });
   const [newTag, setNewTag] = useState("");
   const [newSub, setNewSub] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [submittingSub, setSubmittingSub] = useState(false);
+  const before = recurrences.find((x) => x.taskId === id);
+  const recChanged = (before?.type ?? "") !== rec.type || (before?.interval ?? 1) !== rec.interval
+    || JSON.stringify(before?.weekdays ?? []) !== JSON.stringify(rec.weekdays);
+  const dirty = !!draft && !!original && (Object.keys(draft).some((key) => draft[key as keyof Task] !== original[key as keyof Task]) || recChanged);
+  const dismiss = () => { if (!busy && (!dirty || window.confirm("Descartar as alterações desta tarefa?"))) close(); };
 
   useEffect(() => {
     setDraft(task ?? null);
+    setOriginal(task ?? null);
     const r = recurrences.find((x) => x.taskId === id);
     setRec(r ? { type: r.type, interval: r.interval, weekdays: r.weekdays } : { type: "", interval: 1, weekdays: [] });
     setNewTag("");
     setNewSub("");
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [close]);
+  });
 
   if (!id || !draft) return null;
   const set = <K extends keyof Task>(k: K, v: Task[K]) => setDraft({ ...draft, [k]: v });
 
+  const { columns: statuses, custom } = workflow(columns, draft.areaId, scoped);
+  const activeProject = projects.find((p) => p.id === draft.projectId);
+  const activeArea = areas.find((a) => a.id === draft.areaId);
+  const unavailable = (activeArea && (archived(activeArea) || activeArea.deletedAt)) || (activeProject && (archived(activeProject) || activeProject.deletedAt));
   const save = async () => {
+    if (busy || !draft.title.trim()) return;
+    setBusy(true);
     const wasCompleted = task?.status === "completed";
     const nowCompleted = draft.status === "completed";
     // Horário precisa de um dia, senão o bloco some da agenda.
     const whenDate = draft.startTime && !draft.whenDate && draft.when !== "today" && draft.when !== "evening" ? todayISO() : draft.whenDate;
     const patch: Partial<Task> = {
-      title: draft.title.trim() || draft.title,
+      title: draft.title.trim(),
       notes: draft.notes,
       when: whenDate ? "date" : draft.when === "date" ? null : draft.when,
       whenDate,
@@ -68,32 +92,48 @@ export function TaskEditor() {
       ...(!nowCompleted && wasCompleted ? { completedAt: null } : {}),
       areaId: draft.areaId,
       projectId: draft.projectId,
-      tagIds: draft.tagIds,
+      ...(draft.tagIds !== original?.tagIds ? { tagIds: draft.tagIds } : {}),
+      ...(custom ? { columnId: draft.columnId } : { boardStage: draft.boardStage }),
+      ...(scoped ? { inbox: !!draft.inbox && !draft.areaId && !draft.projectId && !whenDate && !draft.deadline } : {}),
+      ...(portal ? { shared: !!draft.shared && !!draft.areaId } : {}),
     };
-    const before = recurrences.find((x) => x.taskId === draft.id);
-    const changed = (before?.type ?? "") !== rec.type || (before?.interval ?? 1) !== rec.interval
-      || JSON.stringify(before?.weekdays ?? []) !== JSON.stringify(rec.weekdays);
-    if (changed) {
-      await setRecurrence(draft.id, rec.type ? { type: rec.type, interval: Math.max(1, rec.interval), weekdays: rec.type === "weekly" ? rec.weekdays : [] } : null);
+    if (original) {
+      if (draft.title === original.title) delete patch.title;
+      if (draft.notes === original.notes) delete patch.notes;
+      if (draft.status === original.status && draft.columnId === original.columnId && draft.boardStage === original.boardStage
+        && draft.areaId === original.areaId && draft.projectId === original.projectId) {
+        delete patch.status;
+        delete patch.columnId;
+        delete patch.boardStage;
+        delete patch.completedAt;
+        delete patch.isFocus;
+      }
     }
-    await updateTask(draft.id, patch);
-    close();
+    try {
+      if (recChanged && !await setRecurrence(draft.id, rec.type ? {
+        type: rec.type, interval: Math.max(1, rec.interval), weekdays: rec.type === "weekly" ? rec.weekdays : [],
+      } : null)) return;
+      if (await updateTask(draft.id, patch)) close();
+    } finally { setBusy(false); }
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={close}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <input className="modal-title" value={draft.title} onChange={(e) => set("title", e.target.value)} />
-        <textarea rows={3} placeholder="Notas" value={draft.notes} onChange={(e) => set("notes", e.target.value)} />
+    <div className="modal-backdrop" onMouseDown={dismiss}>
+      <div className="modal task-editor" role="dialog" aria-modal="true" aria-label="Detalhes da tarefa" onMouseDown={(e) => e.stopPropagation()}>
+        <input autoFocus aria-label="Título da tarefa" className="modal-title" value={draft.title} onChange={(e) => set("title", e.target.value)} />
+        <label>Descrição<textarea rows={4} placeholder="Adicione detalhes, legenda ou referências" value={draft.notes} onChange={(e) => set("notes", e.target.value)} /></label>
         <div className="form-grid">
-          <label>Data<input type="date" value={draft.whenDate ?? ""} onChange={(e) => set("whenDate", e.target.value || null)} /></label>
-          <label>Prazo<input type="date" value={draft.deadline ?? ""} onChange={(e) => set("deadline", e.target.value || null)} /></label>
-          <label>Início<input type="time" step={900} value={draft.startTime ?? ""} onChange={(e) => set("startTime", e.target.value || null)} /></label>
-          <label>Duração (min)<input type="number" min={15} step={15} disabled={!draft.startTime} value={draft.durationMinutes ?? 60} onChange={(e) => set("durationMinutes", Number(e.target.value))} /></label>
+          <label>Dia de execução<input type="date" value={draft.whenDate ?? ""} onChange={(e) => set("whenDate", e.target.value || null)} /></label>
+          <label>Prazo de entrega<input type="date" value={draft.deadline ?? ""} onChange={(e) => set("deadline", e.target.value || null)} /></label>
           <label>Status
-            <select value={draft.status} onChange={(e) => set("status", e.target.value as Task["status"])}>
-              <option value="open">Aberta</option><option value="waiting">Aguardando</option>
-              <option value="completed">Concluída</option><option value="canceled">Cancelada</option>
+            <select value={draft.status === "canceled" || draft.status === "waiting" ? draft.status : columnIdOf(draft, statuses, custom) ?? ""} onChange={(e) => {
+              const value = e.target.value;
+              const selected = statuses.find((c) => c.id === value);
+              if (selected) setDraft({ ...draft, status: selected.isDone ? "completed" : "open", ...movePatch(draft, selected, custom) });
+              else set("status", value as Task["status"]);
+            }}>
+              {statuses.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
+              <option value="waiting">Aguardando</option><option value="canceled">Cancelada</option>
             </select>
           </label>
           <label>Prioridade
@@ -109,19 +149,30 @@ export function TaskEditor() {
                 const areaId = e.target.value || null;
                 // Trocar de área solta o projeto que não pertence a ela.
                 const keep = projects.find((p) => p.id === draft.projectId)?.areaId === areaId;
-                setDraft({ ...draft, areaId, projectId: keep ? draft.projectId : null });
+                setDraft({ ...draft, areaId, projectId: keep ? draft.projectId : null, columnId: null, shared: false });
               }}
             >
-              <option value="">—</option>{areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              <option value="">—</option>{areas.filter((a) => a.id === draft.areaId || (!archived(a) && !a.deletedAt)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
           <label>Projeto
-            <select value={draft.projectId ?? ""} disabled={!draft.areaId && !draft.projectId} onChange={(e) => set("projectId", e.target.value || null)}>
+            <select value={draft.projectId ?? ""} disabled={!draft.areaId && !draft.projectId} onChange={(e) => setDraft({ ...draft, projectId: e.target.value || null, shared: false })}>
               <option value="">{draft.areaId ? "—" : "Escolha uma área"}</option>
-              {projectsForArea(projects, draft.areaId, draft.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {projectsForArea(projects.filter((p) => p.id === draft.projectId || (!archived(p) && !p.deletedAt)), draft.areaId, draft.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
         </div>
+        {scoped && !draft.areaId && !draft.projectId && <label className="inline"><input type="checkbox" checked={draft.inbox ?? inInbox(draft)} onChange={(e) => set("inbox", e.target.checked)} /> Manter na Entrada</label>}
+        {portal && draft.areaId && <label className="inline"><input type="checkbox" checked={!!draft.shared} disabled={!!unavailable || (!!activeProject && !activeProject.shared)} onChange={(e) => {
+          if (!e.target.checked || window.confirm("Mostrar o título, a descrição e os arquivos desta tarefa a quem tem acesso à área?")) set("shared", e.target.checked);
+        }} /> Compartilhar no portal{activeProject && !activeProject.shared && " (projeto interno)"}</label>}
+        <details className="item-section">
+          <summary>Agendamento{draft.startTime ? ` · ${draft.startTime.slice(0, 5)}` : ""}</summary>
+          <div className="form-grid">
+            <label>Início<input type="time" step={900} value={draft.startTime ?? ""} onChange={(e) => set("startTime", e.target.value || null)} /></label>
+            <label>Duração (min)<input type="number" min={15} step={15} disabled={!draft.startTime} value={draft.durationMinutes ?? 60} onChange={(e) => set("durationMinutes", Number(e.target.value))} /></label>
+          </div>
+        </details>
         <div className="form-section">
           <span className="form-label">Subtarefas</span>
           {forTask(subtasks, draft.id).map((st) => (
@@ -131,15 +182,18 @@ export function TaskEditor() {
               <button type="button" className="del" aria-label="Excluir subtarefa" onClick={() => void removeSubtask(st.id)}>×</button>
             </div>
           ))}
-          <input placeholder="+ subtarefa (Enter)" value={newSub} onChange={(e) => setNewSub(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
+          <input aria-label="Nova subtarefa" disabled={submittingSub} placeholder="+ subtarefa (Enter)" value={newSub} onChange={(e) => setNewSub(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key !== "Enter" || submittingSub || !newSub.trim()) return;
               e.preventDefault();
-              void addSubtask(draft.id, newSub);
-              setNewSub("");
+              setSubmittingSub(true);
+              if (await addSubtask(draft.id, newSub)) setNewSub("");
+              setSubmittingSub(false);
             }} />
         </div>
-        <div className="form-section">
+        <details className="item-section">
+          <summary>Tags e repetição</summary>
+          <div className="form-section">
           <span className="form-label">Tags</span>
           <div className="tag-row">
             {tags.map((g) => {
@@ -183,11 +237,25 @@ export function TaskEditor() {
           )}
           {rec.type && <span className="empty" style={{ fontSize: 13 }}>{describe({ type: rec.type, interval: rec.interval, weekdays: rec.weekdays })} — ao concluir, a próxima é criada.</span>}
         </div>
-        <div className="modal-actions">
-          <button className="btn ghost" onClick={() => { void removeTask(draft.id); close(); }}>Excluir</button>
-          <span style={{ flex: 1 }} />
-          <button className="btn ghost" onClick={close}>Cancelar</button>
-          <button className="btn" onClick={() => void save()}>Salvar</button>
+        </details>
+        {portal && task && <>
+          <ItemFiles key={task.id} id={task.id} entity="task" editable={!unavailable} onChange={() => void load()} />
+          <TaskActivity key={task.id} id={task.id} version={task.contentVersion ?? 1} permission="owner"
+            shared={!dirty && task.shared && !unavailable && (!activeProject || activeProject.shared)} />
+        </>}
+        {error && <p className="error" role="alert">{error}</p>}
+        <div className="modal-actions editor-footer">
+          <details className="action-menu"><summary aria-label="Mais ações da tarefa">•••</summary><div className="action-panel">
+            <button className="danger" disabled={busy} onClick={async () => {
+              if (!window.confirm("Excluir esta tarefa e seu checklist, comentários e aprovações?")) return;
+              setBusy(true);
+              if (await removeTask(draft.id)) close();
+              setBusy(false);
+            }}>Excluir tarefa…</button>
+          </div></details>
+          <span className="spacer" />
+          <button className="btn ghost" disabled={busy} onClick={dismiss}>Cancelar</button>
+          <button className="btn" disabled={busy || !draft.title.trim()} onClick={() => void save()}>{busy ? "Salvando…" : "Salvar"}</button>
         </div>
       </div>
     </div>

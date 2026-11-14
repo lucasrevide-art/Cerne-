@@ -8,7 +8,7 @@ interface AuthState {
   error: string | null;
   init: () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, invite?: string) => Promise<boolean>;
   /** Devolve a mensagem de erro, ou null se deu certo. */
   changePassword: (password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -30,9 +30,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     set({ error: error?.message ?? null });
   },
-  signUp: async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  signUp: async (email, password, invite) => {
+    const redirect = new URL(window.location.pathname, window.location.origin);
+    if (invite) redirect.searchParams.set("convite", invite);
+    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirect.toString() } });
     set({ error: error?.message ?? null });
+    return !error;
   },
   changePassword: async (password) => {
     const { error } = await supabase.auth.updateUser({ password });

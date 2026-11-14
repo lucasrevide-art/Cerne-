@@ -8,9 +8,10 @@ import { useUiStore } from "../stores/uiStore.ts";
 interface Item { id: string; label: string; hint?: string; group: string; run: () => void }
 
 /** ⌘K / Ctrl+K abre a paleta; "g" + tecla navega (ignorado ao digitar em campos). */
-export function useShortcuts(go: (v: View) => void) {
+export function useShortcuts(go: (v: View) => void, enabled = true) {
   const togglePalette = useUiStore((s) => s.togglePalette);
   useEffect(() => {
+    if (!enabled) return;
     let chord = false;
     let timer: ReturnType<typeof setTimeout>;
     const onKey = (e: KeyboardEvent) => {
@@ -36,7 +37,7 @@ export function useShortcuts(go: (v: View) => void) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, togglePalette]);
+  }, [go, togglePalette, enabled]);
 }
 
 export function CommandPalette({ go }: { go: (v: View) => void }) {
@@ -73,17 +74,20 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
     if (!q.trim()) return base;
 
     const create: Item = {
-      id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "⇧↵ · Inbox", group: "Ação",
+      id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "⇧↵ · Entrada", group: "Ação",
       run: done(() => void addTask({ title: q.trim() })),
     };
     const taskHits = rank(q, tasks.filter((t) => t.status === "open" || t.status === "waiting"), (t) => t.title)
       .slice(0, 8)
       .map((t) => ({ id: "t" + t.id, label: t.title, hint: "Tarefa", group: "Tarefas", run: done(() => openEditor(t.id)) }));
-    const noteHits = rank(q, notes, (n) => n.body)
+    const noteHits = rank(q, notes, (n) => `${n.title ?? ""} ${n.body}`)
       .slice(0, 5)
       .map((n) => ({
-        id: "n" + n.id, label: noteTitle(n.body), hint: "Nota", group: "Notas",
-        run: done(() => n.areaId && go({ kind: "area", id: n.areaId })),
+        id: "n" + n.id, label: n.title || noteTitle(n.body), hint: "Nota", group: "Notas",
+        run: done(() => {
+          if (n.projectId) go({ kind: "project", id: n.projectId, noteId: n.id });
+          else if (n.areaId) go({ kind: "area", id: n.areaId, noteId: n.id });
+        }),
       }));
     // Criar fica por último: Enter navega para o melhor resultado; ⇧↵ cria.
     return [...rank(q, base, (i) => i.label), ...taskHits, ...noteHits, create];

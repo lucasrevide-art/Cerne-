@@ -1,3 +1,4 @@
+import { portalRepository } from "../lib/repository/portalRepository.ts";
 import { create } from "zustand";
 import { supabase } from "../lib/supabase/client.ts";
 import { areaRepository } from "../lib/repository/areaRepository.ts";
@@ -9,6 +10,7 @@ import { noteRepository } from "../lib/repository/noteRepository.ts";
 import { columnRepository } from "../lib/repository/columnRepository.ts";
 import { DEFAULT_COLUMNS, canRemoveColumn, sortColumns, swapOrder } from "../lib/board.ts";
 import { recurrenceRepository } from "../lib/repository/recurrenceRepository.ts";
+import { areaOf } from "../lib/workspaces.ts";
 import { addDays } from "../lib/agenda.ts";
 import { todayISO } from "../lib/lenses.ts";
 import { forTask } from "../lib/subtasks.ts";
@@ -39,26 +41,30 @@ interface DataState {
   load: () => Promise<void>;
   reset: () => void;
   subscribe: () => () => void;
-  addTask: (input: Partial<Task> & { title: string }) => Promise<void>;
-  updateTask: (id: string, patch: Partial<Task>) => Promise<void>;
+  addTask: (input: Partial<Task> & { title: string }) => Promise<boolean>;
+  updateTask: (id: string, patch: Partial<Task>) => Promise<boolean>;
   toggleComplete: (task: Task) => Promise<void>;
-  removeTask: (id: string) => Promise<void>;
-  setFocus: (id: string | null) => Promise<void>;
-  addArea: (name: string) => Promise<void>;
-  addProject: (name: string, areaId: string | null) => Promise<void>;
-  addNote: (areaId: string | null) => Promise<Note | null>;
-  updateNote: (id: string, body: string) => Promise<void>;
-  removeNote: (id: string) => Promise<void>;
-  addSubtask: (taskId: string, title: string) => Promise<void>;
-  toggleSubtask: (sub: Subtask) => Promise<void>;
-  removeSubtask: (id: string) => Promise<void>;
-  addColumn: (name: string) => Promise<void>;
-  renameColumn: (id: string, name: string) => Promise<void>;
-  moveColumn: (id: string, dir: -1 | 1) => Promise<void>;
-  removeColumn: (id: string) => Promise<void>;
+  removeTask: (id: string) => Promise<boolean>;
+  setFocus: (id: string | null) => Promise<boolean>;
+  addArea: (name: string) => Promise<boolean>;
+  addProject: (name: string, areaId: string | null) => Promise<boolean>;
+  scoped: boolean;
+  portalEnabled: boolean;
+  updateArea: (id: string, patch: Partial<Area>) => Promise<boolean>;
+  updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>;
+  addNote: (areaId: string | null, projectId?: string | null) => Promise<Note | null>;
+  updateNote: (id: string, patch: Pick<Note, "body" | "title" | "shared">) => Promise<boolean>;
+  removeNote: (id: string) => Promise<boolean>;
+  addSubtask: (taskId: string, title: string) => Promise<boolean>;
+  toggleSubtask: (sub: Subtask) => Promise<boolean>;
+  removeSubtask: (id: string) => Promise<boolean>;
+  addColumn: (name: string, areaId: string | null) => Promise<boolean>;
+  renameColumn: (id: string, name: string) => Promise<boolean>;
+  moveColumn: (id: string, dir: -1 | 1) => Promise<boolean>;
+  removeColumn: (id: string, destination: string) => Promise<boolean>;
   addTag: (name: string) => Promise<Tag | null>;
-  removeTag: (id: string) => Promise<void>;
-  setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<void>;
+  removeTag: (id: string) => Promise<boolean>;
+  setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<boolean>;
 }
 
 // Controle de concorrência: escritas em andamento e cargas obsoletas não podem
@@ -80,8 +86,10 @@ const guard = async (set: (p: Partial<DataState>) => void, fn: () => Promise<voi
   try {
     await fn();
     set({ error: null });
+    return true;
   } catch (e) {
     set({ error: e instanceof Error ? e.message : String(e) });
+    return false;
   } finally {
     inflight--;
   }
@@ -99,34 +107,40 @@ export const useDataStore = create<DataState>((set, get) => ({
   recurrences: [],
   columns: [],
   customColumns: false,
+  scoped: false,
+  portalEnabled: false,
 
   load: async () => {
     const seq = ++loadSeq;
     try {
-      const [tasks, subtasks, projects, areas, tags, notes, recurrences, listed] = await Promise.all([
+      const [tasks, subtasks, projects, areas, tags, notes, recurrences, listed, portalEnabled] = await Promise.all([
         taskRepository.list(), subtaskRepository.list(), projectRepository.list(),
         areaRepository.list(), tagRepository.list(), noteRepository.list(), recurrenceRepository.list(),
-        columnRepository.list(),
+        columnRepository.list(), portalRepository.available(),
       ]);
       if (seq !== loadSeq) return; // chegou uma carga mais nova (ou reset): descarta esta
       if (inflight > 0) return scheduleReload(); // há escrita em andamento: tenta de novo depois
       // Tabela existe mas está vazia (conta nova): cria as colunas iniciais.
-      let columns = listed ?? [];
-      if (listed !== null && listed.length === 0) {
-        for (const c of DEFAULT_COLUMNS) columns.push(await columnRepository.create(c));
+      let columns = [...(listed ?? [])];
+      if (listed !== null && !listed.some((c) => !c.areaId)) {
+        for (const c of DEFAULT_COLUMNS) {
+          if (!columns.some((existing) => !existing.areaId && existing.isDone && c.isDone)) {
+            columns.push(await columnRepository.create(c));
+          }
+        }
         if (seq !== loadSeq) return;
       }
       columns = sortColumns(columns);
-      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, columns, customColumns: listed !== null, loaded: true, error: null });
+      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, columns, customColumns: listed !== null, scoped: portalEnabled || areas.some((a) => a.description !== undefined) || columns.some((c) => c.areaId !== undefined), portalEnabled, loaded: true, error: null });
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e) });
+      if (seq === loadSeq) set({ error: e instanceof Error ? e.message : String(e) });
     }
   },
 
   reset: () => {
     loadSeq++;
     clearTimeout(reloadTimer);
-    set({ loaded: false, error: null, tasks: [], subtasks: [], projects: [], areas: [], tags: [], notes: [], recurrences: [], columns: [], customColumns: false });
+    set({ loaded: false, error: null, tasks: [], subtasks: [], projects: [], areas: [], tags: [], notes: [], recurrences: [], columns: [], customColumns: false, scoped: false, portalEnabled: false });
   },
 
   // Realtime: mudanças (inclusive as nossas) agrupadas num único recarregamento.
@@ -142,18 +156,21 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   addTask: (input) => guard(set, async () => {
-    const t = await taskRepository.create(input);
+    const areaId = areaOf({ areaId: input.areaId ?? null, projectId: input.projectId ?? null }, get().projects);
+    const t = await taskRepository.create({ ...input, areaId, ...(!get().scoped ? {} : { inbox: input.inbox ?? (!areaId && !input.projectId && !input.when && !input.deadline && !input.isFocus) }) });
     set({ tasks: [...get().tasks, t] });
   }),
 
   updateTask: (id, patch) => guard(set, async () => {
     const prev = get().tasks.find((t) => t.id === id);
-    set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
-    await taskRepository.update(id, patch);
+    if (!prev) throw new Error("Tarefa indisponível.");
+    const saved = await taskRepository.update(id, patch);
+    const next = saved ? { ...saved, tagIds: patch.tagIds ?? prev.tagIds } : { ...prev, ...patch };
+    set({ tasks: get().tasks.map((t) => t.id === id ? next : t) });
     // Concluir uma tarefa recorrente gera a próxima ocorrência.
-    if (prev && prev.status !== "completed" && patch.status === "completed") {
+    if (prev.status !== "completed" && next.status === "completed") {
       const rec = get().recurrences.find((r) => r.taskId === id);
-      if (rec) await spawnNext({ ...prev, ...patch }, rec, set, get);
+      if (rec) await spawnNext(next, rec, set, get);
     }
   }),
 
@@ -179,6 +196,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   addArea: (name) => guard(set, async () => {
     const a = await areaRepository.create({ name, sortOrder: get().areas.length });
     set({ areas: [...get().areas, a] });
+    if (get().scoped) set({ columns: (await columnRepository.list()) ?? [] });
   }),
 
   addProject: (name, areaId) => guard(set, async () => {
@@ -186,10 +204,19 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({ projects: [...get().projects, p] });
   }),
 
-  addNote: async (areaId) => {
+  updateArea: (id, patch) => guard(set, async () => {
+    const saved = await areaRepository.update(id, patch);
+    set({ areas: get().areas.map((a) => a.id === id ? saved : a) });
+  }),
+  updateProject: (id, patch) => guard(set, async () => {
+    const saved = await projectRepository.update(id, patch);
+    set({ projects: get().projects.map((p) => p.id === id ? saved : p) });
+  }),
+
+  addNote: async (areaId, projectId) => {
     inflight++;
     try {
-      const n = await noteRepository.create(areaId);
+      const n = await noteRepository.create(areaId, projectId);
       set({ notes: [n, ...get().notes], error: null });
       return n;
     } catch (e) {
@@ -200,15 +227,14 @@ export const useDataStore = create<DataState>((set, get) => ({
     }
   },
 
-  updateNote: (id, body) => guard(set, async () => {
-    const updatedAt = new Date().toISOString();
-    set({ notes: get().notes.map((n) => (n.id === id ? { ...n, body, updatedAt } : n)) });
-    await noteRepository.updateBody(id, body);
+  updateNote: (id, patch) => guard(set, async () => {
+    const saved = await noteRepository.update(id, patch);
+    set({ notes: get().notes.map((n) => n.id === id ? saved : n) });
   }),
 
   removeNote: (id) => guard(set, async () => {
-    set({ notes: get().notes.filter((n) => n.id !== id) });
     await noteRepository.remove(id);
+    set({ notes: get().notes.filter((n) => n.id !== id) });
   }),
 
   addSubtask: (taskId, title) => guard(set, async () => {
@@ -230,41 +256,41 @@ export const useDataStore = create<DataState>((set, get) => ({
     await subtaskRepository.remove(id);
   }),
 
-  addColumn: (name) => guard(set, async () => {
-    const clean = name.trim();
-    if (!clean || !get().customColumns) return;
-    const cols = sortColumns(get().columns);
-    const last = cols[cols.length - 1];
-    const prev = cols[cols.length - 2];
-    // Entra no fim, mas antes da coluna de concluído quando ela é a última.
-    const sortOrder = !last ? 1 : last.isDone ? ((prev?.sortOrder ?? last.sortOrder - 1) + last.sortOrder) / 2 : last.sortOrder + 1;
-    const created = await columnRepository.create({ name: clean, isDone: false, sortOrder });
+  addColumn: (name, areaId) => guard(set, async () => {
+    const columns = get().columns.filter((c) => (c.areaId ?? null) === areaId);
+    const sortOrder = Math.max(0, ...columns.map((c) => c.sortOrder)) + 1;
+    const created = await columnRepository.create({ name: name.trim(), isDone: false, sortOrder, areaId });
     set({ columns: sortColumns([...get().columns, created]) });
   }),
 
   renameColumn: (id, name) => guard(set, async () => {
-    const clean = name.trim();
-    if (!clean) return;
-    set({ columns: get().columns.map((c) => (c.id === id ? { ...c, name: clean } : c)) });
-    await columnRepository.update(id, { name: clean });
+    await columnRepository.update(id, { name: name.trim() });
+    set({ columns: get().columns.map((c) => c.id === id ? { ...c, name: name.trim() } : c) });
   }),
 
   moveColumn: (id, dir) => guard(set, async () => {
-    const changes = swapOrder(get().columns, id, dir);
-    if (!changes.length) return;
-    const next = new Map(changes.map((c) => [c.id, c.sortOrder]));
-    set({ columns: sortColumns(get().columns.map((c) => (next.has(c.id) ? { ...c, sortOrder: next.get(c.id)! } : c))) });
-    for (const c of changes) await columnRepository.update(c.id, { sortOrder: c.sortOrder });
+    const scope = get().columns.find((c) => c.id === id)?.areaId ?? null;
+    const columns = get().columns.filter((c) => (c.areaId ?? null) === scope);
+    const orders = new Map(swapOrder(columns, id, dir).map((c) => [c.id, c.sortOrder]));
+    if (!orders.size) return;
+    const ordered = sortColumns(columns.map((c) => ({ ...c, sortOrder: orders.get(c.id) ?? c.sortOrder })));
+    await columnRepository.order(ordered.map((c) => c.id));
+    set({ columns: [...get().columns.filter((c) => (c.areaId ?? null) !== scope), ...ordered] });
   }),
 
-  removeColumn: (id) => guard(set, async () => {
-    if (!canRemoveColumn(get().columns, id)) return;
-    await columnRepository.remove(id); // o banco zera column_id das tarefas (on delete set null)
-    set({
-      columns: get().columns.filter((c) => c.id !== id),
-      tasks: get().tasks.map((t) => (t.columnId === id ? { ...t, columnId: null } : t)),
+  removeColumn: async (id, destination) => {
+    const ok = await guard(set, async () => {
+      if (!canRemoveColumn(get().columns.filter((c) => c.areaId === get().columns.find((x) => x.id === id)?.areaId), id)) {
+        throw new Error("Esta coluna precisa permanecer no quadro.");
+      }
+      await columnRepository.remove(id, destination);
+      set({
+        columns: get().columns.filter((c) => c.id !== id),
+        tasks: get().tasks.map((t) => t.columnId === id ? { ...t, columnId: destination } : t),
+      });
     });
-  }),
+    return ok;
+  },
 
   addTag: async (name) => {
     const clean = name.trim();
@@ -315,6 +341,7 @@ async function spawnNext(
     priority: task.priority, type: task.type, amount: task.amount, category: task.category,
     projectId: task.projectId, areaId: task.areaId, tagIds: task.tagIds,
     startTime: task.startTime, durationMinutes: task.durationMinutes,
+    ...(get().scoped ? { inbox: false } : {}),
     boardStage: "todo", sortOrder: task.sortOrder,
   });
   // Subtarefas voltam como abertas na próxima ocorrência.

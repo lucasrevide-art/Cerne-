@@ -1,13 +1,17 @@
+import { useState } from "react";
+import { inInbox } from "../lib/workspaces.ts";
 import { shortDate } from "../lib/format.ts";
 import { progress } from "../lib/subtasks.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
 
-export function TaskRow({ task }: { task: Task }) {
+export function TaskRow({ task, readOnly }: { task: Task; readOnly?: boolean }) {
   const toggle = useDataStore((s) => s.toggleComplete);
   const setFocus = useDataStore((s) => s.setFocus);
-  const remove = useDataStore((s) => s.removeTask);
+  const update = useDataStore((s) => s.updateTask);
+  const scoped = useDataStore((s) => s.scoped);
+  const [busy, setBusy] = useState(false);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
 
@@ -23,8 +27,8 @@ export function TaskRow({ task }: { task: Task }) {
 
   return (
     <div className={`task${done ? " done" : ""}`}>
-      <button className={`check${done ? " done" : ""}`} aria-label="Concluir" onClick={() => void toggle(task)} />
-      <span className="title" style={{ cursor: "pointer" }} onClick={() => openEditor(task.id)}>{task.title}</span>
+      {!readOnly && <button className={`check${done ? " done" : ""}`} disabled={busy} aria-label={done ? "Reabrir tarefa" : "Concluir tarefa"} onClick={async () => { setBusy(true); await toggle(task); setBusy(false); }} />}
+      <button className="title task-title" onClick={() => openEditor(task.id)}>{task.title}</button>
       {task.priority >= 2 && <span className="chip prio" title={task.priority === 3 ? "Urgente" : "Prioridade alta"}>{task.priority === 3 ? "!!" : "!"}</span>}
       {label && <span className="chip">{label}</span>}
       {task.when === "date" && task.whenDate && <span className="chip">{shortDate(task.whenDate)}</span>}
@@ -34,10 +38,12 @@ export function TaskRow({ task }: { task: Task }) {
       {sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
       {recurring && <span className="chip" title="Recorrente">↻</span>}
       {task.deadline && <span className="chip">prazo {shortDate(task.deadline)}</span>}
-      {!done && (
-        <button className={`star${task.isFocus ? " on" : ""}`} aria-label="A Única Coisa" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>
+      {!done && !readOnly && (
+        <button className={`star${task.isFocus ? " on" : ""}`} aria-pressed={task.isFocus} aria-label="Marcar foco do dia" title="Foco do dia" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>
       )}
-      <button className="del" aria-label="Excluir" onClick={() => void remove(task.id)}>×</button>
+      {scoped && !readOnly && inInbox(task) && <button className="btn ghost small" disabled={busy} onClick={async () => {
+        setBusy(true); await update(task.id, { inbox: false }); setBusy(false);
+      }}>Organizar</button>}
     </div>
   );
 }

@@ -20,10 +20,11 @@ export const taskRepository = {
     return taskFromRow(row, input.tagIds ?? []);
   },
 
-  async update(id: string, patch: Partial<Task>): Promise<void> {
+  async update(id: string, patch: Partial<Task>): Promise<Task | null> {
     const row = taskToRow(patch);
-    if (Object.keys(row).length) unwrap(await supabase.from("tasks").update(row).eq("id", id).select());
+    const saved = Object.keys(row).length ? unwrap(await supabase.from("tasks").update(row).eq("id", id).select().single()) : null;
     if (patch.tagIds) await this.setTags(id, patch.tagIds);
+    return saved ? taskFromRow(saved, patch.tagIds) : null;
   },
 
   async remove(id: string): Promise<void> {

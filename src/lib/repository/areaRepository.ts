@@ -10,8 +10,8 @@ export const areaRepository = {
   async create(input: Partial<Area> & { name: string }): Promise<Area> {
     return areaFromRow(unwrap(await supabase.from("areas").insert(areaToRow(input)).select().single()));
   },
-  async update(id: string, patch: Partial<Area>): Promise<void> {
-    unwrap(await supabase.from("areas").update(areaToRow(patch)).eq("id", id).select());
+  async update(id: string, patch: Partial<Area>): Promise<Area> {
+    return areaFromRow(unwrap(await supabase.from("areas").update(areaToRow(patch)).eq("id", id).select().single()));
   },
   async remove(id: string): Promise<void> {
     unwrap(await supabase.from("areas").delete().eq("id", id).select());

@@ -5,6 +5,7 @@ type Row = Record<string, any>;
 
 export const taskFromRow = (r: Row, tagIds: string[] = []): Task => ({
   id: r.id,
+  inbox: r.inbox, shared: r.shared, contentVersion: r.content_version,
   title: r.title,
   notes: r.notes ?? "",
   when: r.when_kind,
@@ -36,14 +37,14 @@ export const taskToRow = (t: Partial<Task>): Row => {
   };
   const out: Row = {};
   for (const [k, v] of Object.entries(t)) {
-    if (k === "tagIds") continue;
+    if (k === "tagIds" || k === "contentVersion") continue;
     out[m[k] ?? k] = v;
   }
   return out;
 };
 
 export const columnFromRow = (r: Row): BoardColumn => ({
-  id: r.id, name: r.name, isDone: r.is_done, sortOrder: r.sort_order,
+  areaId: r.area_id, id: r.id, name: r.name, isDone: r.is_done, sortOrder: r.sort_order,
 });
 
 export const subtaskFromRow = (r: Row): Subtask => ({
@@ -51,27 +52,30 @@ export const subtaskFromRow = (r: Row): Subtask => ({
 });
 
 export const projectFromRow = (r: Row): Project => ({
+  archivedAt: r.archived_at, deletedAt: r.deleted_at, shared: r.shared,
   id: r.id, name: r.name, notes: r.notes ?? "", status: r.status,
   areaId: r.area_id, deadline: r.deadline, sortOrder: r.sort_order,
 });
 export const projectToRow = (p: Partial<Project>): Row => {
   const out: Row = {};
-  for (const [k, v] of Object.entries(p)) out[k === "areaId" ? "area_id" : k === "sortOrder" ? "sort_order" : k] = v;
+  for (const [k, v] of Object.entries(p)) out[k === "areaId" ? "area_id" : k === "sortOrder" ? "sort_order" : k === "archivedAt" ? "archived_at" : k === "deletedAt" ? "deleted_at" : k] = v;
   return out;
 };
 
 export const areaFromRow = (r: Row): Area => ({
+  description: r.description, archivedAt: r.archived_at, deletedAt: r.deleted_at,
   id: r.id, name: r.name, color: r.color, icon: r.icon, sortOrder: r.sort_order,
 });
 export const areaToRow = (a: Partial<Area>): Row => {
   const out: Row = {};
-  for (const [k, v] of Object.entries(a)) out[k === "sortOrder" ? "sort_order" : k] = v;
+  for (const [k, v] of Object.entries(a)) out[k === "sortOrder" ? "sort_order" : k === "archivedAt" ? "archived_at" : k === "deletedAt" ? "deleted_at" : k] = v;
   return out;
 };
 
 export const tagFromRow = (r: Row): Tag => ({ id: r.id, name: r.name, color: r.color });
 
 export const noteFromRow = (r: Row): Note => ({
+  title: r.title, projectId: r.project_id, shared: r.shared,
   id: r.id, areaId: r.area_id, body: r.body, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { buildBackup, parseBackup, summarize } from "../lib/backup.ts";
 import { backupRepository } from "../lib/repository/backupRepository.ts";
-import { ColumnManager } from "../components/ColumnManager.tsx";
 import { useAuthStore } from "../stores/authStore.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 
@@ -79,7 +78,6 @@ export function SettingsView() {
         {pwMsg && <div className={pwMsg.ok ? "ok" : "error"}>{pwMsg.text}</div>}
       </form>
 
-      <ColumnManager />
 
       <div className="day-title">Tags</div>
       <div className="tag-row">
@@ -93,10 +91,11 @@ export function SettingsView() {
         ))}
       </div>
 
-      <div className="day-title">Backup</div>
+      <div className="day-title">Backup e restauração</div>
+      <p className="empty">O arquivo JSON inclui os registros de trabalho da sua conta. A restauração adiciona registros e atualiza os de mesmo identificador. Convites, arquivos e histórico de aprovação ficam no espaço original.</p>
       <div className="settings-form">
-        <button className="btn" disabled={busy} onClick={() => void doExport()}>Exportar JSON</button>
-        <button className="btn ghost" disabled={busy} onClick={() => fileRef.current?.click()}>Importar JSON…</button>
+        <button className="btn" disabled={busy} onClick={() => void doExport()}>Baixar backup</button>
+        <button className="btn ghost" disabled={busy} onClick={() => fileRef.current?.click()}>Restaurar backup…</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && void doImport(e.target.files[0])} />
         {bkMsg && <div className={bkMsg.ok ? "ok" : "error"}>{bkMsg.text}</div>}
       </div>

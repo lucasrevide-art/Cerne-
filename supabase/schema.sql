@@ -125,3 +125,6 @@ end $$;
 
 -- Realtime
 alter publication supabase_realtime add table areas, projects, tags, board_columns, tasks, task_tags, subtasks, notes, recurrences;
+
+-- For the current schema, apply migration_workspaces.sql and then
+-- migration_client_portal.sql after this baseline.

@@ -1,3 +1,4 @@
+import { activeTasks } from "../lib/workspaces.ts";
 import { useState } from "react";
 import { TaskRow } from "../components/TaskRow.tsx";
 import { agendaList } from "../lib/calendar.ts";
@@ -26,7 +27,10 @@ export function AgendaScreen() {
 }
 
 function AgendaList() {
-  const tasks = useDataStore((s) => s.tasks);
+  const allTasks = useDataStore((s) => s.tasks);
+  const areas = useDataStore((s) => s.areas);
+  const projects = useDataStore((s) => s.projects);
+  const tasks = activeTasks(allTasks, areas, projects);
   const now = todayISO();
   const groups = agendaList(tasks, now);
   const label = (day: string) =>

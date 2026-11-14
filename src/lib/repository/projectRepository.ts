@@ -10,8 +10,8 @@ export const projectRepository = {
   async create(input: Partial<Project> & { name: string }): Promise<Project> {
     return projectFromRow(unwrap(await supabase.from("projects").insert(projectToRow(input)).select().single()));
   },
-  async update(id: string, patch: Partial<Project>): Promise<void> {
-    unwrap(await supabase.from("projects").update(projectToRow(patch)).eq("id", id).select());
+  async update(id: string, patch: Partial<Project>): Promise<Project> {
+    return projectFromRow(unwrap(await supabase.from("projects").update(projectToRow(patch)).eq("id", id).select().single()));
   },
   async remove(id: string): Promise<void> {
     unwrap(await supabase.from("projects").delete().eq("id", id).select());
