@@ -1,4 +1,5 @@
 import { useDataStore } from "../stores/dataStore.ts";
+import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
 
 export function TaskRow({ task }: { task: Task }) {
@@ -8,6 +9,7 @@ export function TaskRow({ task }: { task: Task }) {
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
 
+  const openEditor = useUiStore((s) => s.openEditor);
   const done = task.status === "completed";
   const area = areas.find((a) => a.id === task.areaId);
   const project = projects.find((p) => p.id === task.projectId);
@@ -16,7 +18,7 @@ export function TaskRow({ task }: { task: Task }) {
   return (
     <div className={`task${done ? " done" : ""}`}>
       <button className={`check${done ? " done" : ""}`} aria-label="Concluir" onClick={() => void toggle(task)} />
-      <span className="title">{task.title}</span>
+      <span className="title" style={{ cursor: "pointer" }} onClick={() => openEditor(task.id)}>{task.title}</span>
       {label && <span className="chip">{label}</span>}
       {task.deadline && <span className="chip">prazo {task.deadline.slice(5).split("-").reverse().join("/")}</span>}
       {!done && (

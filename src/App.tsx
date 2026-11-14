@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { AuthScreen } from "./components/AuthScreen.tsx";
+import { AgendaView } from "./views/AgendaView.tsx";
+import { BoardView } from "./views/BoardView.tsx";
+import { TaskEditor } from "./components/TaskEditor.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
 import { TaskListView } from "./views/TaskListView.tsx";
 import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
@@ -8,7 +11,7 @@ import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
 
 type View =
-  | { kind: "inbox" | "today" | "focus" | "waiting" | "completed" }
+  | { kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" }
   | { kind: "area"; id: string }
   | { kind: "project"; id: string };
 
@@ -24,6 +27,7 @@ export function App() {
   const addProject = useDataStore((s) => s.addProject);
   const [view, setView] = useState<View>({ kind: "today" });
   const [newArea, setNewArea] = useState("");
+  const [projectMode, setProjectMode] = useState<"list" | "board">("list");
 
   useEffect(() => init(), [init]);
   useEffect(() => {
@@ -40,7 +44,7 @@ export function App() {
 
   const now = todayISO();
   const lists = { inbox: inbox(tasks), today: today(tasks, now), focus: focus(tasks), waiting: waiting(tasks) };
-  const nav = (kind: "inbox" | "today" | "focus" | "waiting" | "completed", label: string, count?: number) => (
+  const nav = (kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda", label: string, count?: number) => (
     <button className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => setView({ kind })}>
       <span>{label}</span>{count ? <span className="count">{count}</span> : null}
     </button>
@@ -59,6 +63,9 @@ export function App() {
       break;
     case "waiting":
       content = <TaskListView title="Aguardando" tasks={lists.waiting} />;
+      break;
+    case "agenda":
+      content = <AgendaView />;
       break;
     case "completed":
       content = <CompletedView />;
@@ -89,7 +96,17 @@ export function App() {
     case "project": {
       const p = projects.find((x) => x.id === view.id);
       const own = tasks.filter((t) => t.projectId === view.id && t.status === "open");
-      content = <TaskListView title={p?.name ?? "Projeto"} tasks={own} defaults={{ projectId: view.id, areaId: p?.areaId ?? null }} />;
+      content = (
+        <>
+          <div className="seg view-toggle">
+            <button className={projectMode === "list" ? "on" : ""} onClick={() => setProjectMode("list")}>Lista</button>
+            <button className={projectMode === "board" ? "on" : ""} onClick={() => setProjectMode("board")}>Quadro</button>
+          </div>
+          {projectMode === "list"
+            ? <TaskListView title={p?.name ?? "Projeto"} tasks={own} defaults={{ projectId: view.id, areaId: p?.areaId ?? null }} />
+            : <><h2>{p?.name ?? "Projeto"}</h2><BoardView projectId={view.id} areaId={p?.areaId ?? null} /></>}
+        </>
+      );
       break;
     }
   }
@@ -102,6 +119,7 @@ export function App() {
         {nav("today", "Hoje", lists.today.length)}
         {nav("focus", "A Única Coisa", lists.focus.length)}
         {nav("waiting", "Aguardando", lists.waiting.length)}
+        {nav("agenda", "Agenda")}
         {nav("completed", "Concluídas")}
         <div className="group-title">Áreas</div>
         {areas.map((a) => (
@@ -113,10 +131,11 @@ export function App() {
         <div className="spacer" />
         <button className="nav-item" onClick={() => void signOut()}>Sair</button>
       </aside>
-      <main className="main">
+      <main className={`main${view.kind === "agenda" || (view.kind === "project" && projectMode === "board") ? " wide" : ""}`}>
         {error && <div className="banner error">{error}</div>}
         {content}
       </main>
+      <TaskEditor />
     </div>
   );
 }
