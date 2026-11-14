@@ -1,6 +1,9 @@
+import { Select } from "./ui/Select.tsx";
 import { useEffect, useState } from "react";
 import { portalRepository, type AccessLevel, type AreaAccess } from "../lib/repository/portalRepository.ts";
-import visibilityOff from "../assets/visibility-off.svg";
+import { EyeOff } from "lucide-react";
+import { Dialog } from "./ui/Dialog.tsx";
+import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { Notice } from "./Notice.tsx";
 import type { Area } from "../types.ts";
 
@@ -28,10 +31,8 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal" role="dialog" aria-modal="true" aria-label={`Compartilhar ${area.name}`}>
-        <h3>Compartilhar {area.name}</h3>
-        <Notice tone="info" title="Visibilidade no portal" icon={visibilityOff}>O cliente vê o nome e a descrição da área e os itens marcados como compartilhados. Projetos internos e novos itens ficam privados.</Notice>
+    <Dialog title={`Compartilhar ${area.name}`} onClose={close}>
+        <Notice tone="info" title="Visibilidade no portal" icon={<EyeOff />}>O cliente vê o nome e a descrição da área e os itens marcados como compartilhados. Projetos internos e novos itens ficam privados.</Notice>
         <form className="stack" onSubmit={(e) => {
           e.preventDefault();
           if (busy) return;
@@ -42,9 +43,9 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
           });
         }}>
           <label>E-mail do cliente<input type="email" autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-          <label>Permissão<select value={permission} onChange={(e) => setPermission(e.target.value as AccessLevel)}>
+          <label>Permissão<Select label="Permissão" value={permission} onValueChange={(value) => setPermission(value as AccessLevel)}>
             {Object.entries(levels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select></label>
+          </Select></label>
           <button className="btn" disabled={busy || !email.trim()}>Salvar convite</button>
         </form>
         {access.map((entry) => (
@@ -53,12 +54,12 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
             <span>{levels[entry.permission]} · {entry.member_id ? "Aceito" : "Pendente"}</span>
             {!entry.member_id && <input aria-label={`Link para ${entry.email}`} readOnly value={inviteLink(entry.token)} onFocus={(e) => e.currentTarget.select()} />}
             <div className="mode-row">
-              {!entry.member_id && <button className="btn ghost" disabled={busy} onClick={() => void run(async () => {
+              {!entry.member_id && <button className="btn outline" disabled={busy} onClick={() => void run(async () => {
                 await navigator.clipboard.writeText(inviteLink(entry.token));
                 setCopied(entry.id);
               })}>{copied === entry.id ? "Copiado" : "Copiar convite"}</button>}
-              <button className="btn ghost danger" disabled={busy} onClick={() => {
-                if (window.confirm(`Revogar o acesso de ${entry.email}?`)) void run(async () => setAccess(await portalRepository.access(area.id, "revoke", entry.id)));
+              <button className="btn outline danger" disabled={busy} onClick={async () => {
+                if (await confirmAction({ title: "Revogar acesso?", description: `${entry.email} perderá o acesso ao conteúdo desta área.`, label: "Revogar acesso", destructive: true })) void run(async () => setAccess(await portalRepository.access(area.id, "revoke", entry.id)));
               }}>Revogar</button>
             </div>
           </div>
@@ -66,8 +67,7 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
         {access.some((entry) => !entry.member_id) && <p className="empty">Envie o link à pessoa convidada. Ela precisa entrar com o e-mail confirmado que consta no convite.</p>}
         {busy && <span role="status">Aguarde…</span>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
-        <button className="btn ghost" onClick={close}>Fechar</button>
-      </div>
-    </div>
+        <button className="btn outline" onClick={close}>Fechar</button>
+    </Dialog>
   );
 }

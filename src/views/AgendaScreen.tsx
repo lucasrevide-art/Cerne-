@@ -1,3 +1,5 @@
+import { CalendarDays, Clock3, List } from "lucide-react";
+import { Tabs, TabPanel } from "../components/ui/Tabs.tsx";
 import type { Task } from "../types.ts";
 import { activeTasks } from "../lib/workspaces.ts";
 import { useState } from "react";
@@ -20,16 +22,14 @@ export function AgendaScreen() {
 
   return (
     <>
-      <header className="page-head agenda-header">
-        <h2>Agenda</h2>
-        <div className="seg view-toggle" aria-label="Visualização da agenda">
-          {([["month", "Mês"], ["list", "Lista"], ["grid", "Horários"]] as const).map(([view, label]) =>
-            <button key={view} aria-pressed={mode === view} className={mode === view ? "on" : ""} onClick={() => setMode(view)}>{label}</button>)}
-        </div>
-      </header>
-      {mode === "list" && <AgendaList tasks={tasks} />}
-      <div hidden={mode !== "month"}><UpcomingView tasks={tasks} /></div>
-      {mode === "grid" && <AgendaView tasks={tasks} />}
+      <header className="page-head agenda-header"><h2>Agenda</h2></header>
+      <Tabs value={mode} onChange={setMode} label="Visualização da agenda" className="agenda-tabs" items={[
+        ["month", <><CalendarDays />Mês</>], ["list", <><List />Lista</>], ["grid", <><Clock3 />Horários</>],
+      ]}>
+        <TabPanel value="list"><AgendaList tasks={tasks} /></TabPanel>
+        <TabPanel value="month" forceMount hidden={mode !== "month"}><UpcomingView tasks={tasks} /></TabPanel>
+        <TabPanel value="grid"><AgendaView tasks={tasks} /></TabPanel>
+      </Tabs>
     </>
   );
 }

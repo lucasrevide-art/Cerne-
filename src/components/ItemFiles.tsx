@@ -30,11 +30,11 @@ export function ItemFiles({ id, entity, editable, onChange }: {
     {files.length === 0 && <span className="empty">Nenhum arquivo anexado.</span>}
     {files.map((file) => <div className="mode-row" key={file.id}>
       <span className="file-name">{file.name}</span>
-      {/^(image\/(png|jpeg|gif|webp|avif))$/.test(file.mime) && <button className="btn ghost" disabled={!!busy} onClick={() => void run("Abrindo…", async () => {
+      {/^(image\/(png|jpeg|gif|webp|avif))$/.test(file.mime) && <button className="btn outline" disabled={!!busy} onClick={() => void run("Abrindo…", async () => {
         const blob = await portalRepository.download(file.id);
         setPreview({ url: URL.createObjectURL(blob), name: file.name });
       })}>Prévia</button>}
-      <button className="btn ghost" disabled={!!busy} onClick={() => void run("Baixando…", async () => {
+      <button className="btn outline" disabled={!!busy} onClick={() => void run("Baixando…", async () => {
         const blob = await portalRepository.download(file.id);
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -42,7 +42,7 @@ export function ItemFiles({ id, entity, editable, onChange }: {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       })}>Baixar</button>
     </div>)}
-    {preview && <div className="stack"><img className="attachment-preview" src={preview.url} alt={preview.name} /><button className="btn ghost" onClick={() => setPreview(undefined)}>Fechar prévia</button></div>}
+    {preview && <div className="stack"><img className="attachment-preview" src={preview.url} alt={preview.name} /><button className="btn outline" onClick={() => setPreview(undefined)}>Fechar prévia</button></div>}
     {editable && <label>Selecionar arquivo (até 20 MB)<input type="file" disabled={!!busy} onChange={(e) => {
       const file = e.target.files?.[0];
       if (file) { setPending({ file, id: crypto.randomUUID() }); setError(""); }

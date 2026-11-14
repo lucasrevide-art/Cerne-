@@ -1,3 +1,7 @@
+import { Select } from "../components/ui/Select.tsx";
+import { ChevronRight, FileText, Folder, LayoutGrid, List, ListTodo, PanelsTopLeft, Plus } from "lucide-react";
+import { Notice } from "../components/Notice.tsx";
+import { Tabs, TabPanel } from "../components/ui/Tabs.tsx";
 import { useEffect, useState } from "react";
 import type { View } from "../lib/nav.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -16,13 +20,16 @@ import type { Area, Project } from "../types.ts";
 type Tab = "overview" | "tasks" | "projects" | "notes";
 type Mode = "list" | "board";
 type Props = { id: string; kind: "area" | "project"; go: (view: View) => void; noteId?: string; initialTab?: Tab };
-const labels: Record<Tab, string> = { overview: "Visão geral", tasks: "Tarefas", projects: "Projetos", notes: "Notas" };
+const labels = {
+  overview: <><PanelsTopLeft />Visão geral</>, tasks: <><ListTodo />Tarefas</>,
+  projects: <><Folder />Projetos</>, notes: <><FileText />Notas</>,
+};
 
 export function GroupList({ groups, go, kind }: { groups: (Area | Project)[]; go: Props["go"]; kind: Props["kind"] }) {
   const render = (group: Area | Project) => (
     <div className="project-card group-card" key={group.id}>
       <button className="group-link" onClick={() => go({ kind, id: group.id })}>
-        <strong>{group.name}</strong>
+        <strong><Folder />{group.name}</strong>
         {"status" in group && group.shared !== undefined && <span>{group.shared ? "Compartilhado" : "Interno"}</span>}
       </button>
       <WorkspaceActions group={group} onPreview={kind === "area" ? () => go({ kind: "portal", id: group.id, preview: true }) : undefined} />
@@ -46,7 +53,7 @@ export function AreasView({ go }: { go: Props["go"] }) {
   const legacy = projects.filter((p) => !p.areaId && !p.deletedAt);
   return (
     <>
-      <header className="page-head"><h2>Áreas</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : "Nova área"}</button></header>
+      <header className="page-head"><h2>Áreas</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : <><Plus />Nova área</>}</button></header>
       {creating && <QuickAdd label="Nome da área" button="Criar área" submit={async (name) => {
         const saved = await addArea(name);
         if (saved) setCreating(false);
@@ -86,7 +93,7 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
   if (!group) return <p className="empty">Este espaço está indisponível.</p>;
   if (group.deletedAt || area?.deletedAt) return <div className="stack">
     <p className="empty">Este espaço está na lixeira.</p>
-    <div><button className="btn ghost" onClick={() => go({ kind: "settings" })}>Abrir Conta e dados</button></div>
+    <div><button className="btn outline" onClick={() => go({ kind: "settings" })}>Abrir Conta e dados</button></div>
   </div>;
   const inactive = archived(group) || (area && archived(area));
   const areaProjects = projects.filter((p) => p.areaId === id);
@@ -105,20 +112,17 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
     <>
       <nav className="crumbs" aria-label="Localização">
         <button className="link-btn" onClick={() => go({ kind: "areas" })}>Áreas</button>
-        {project && area && <> › <button className="link-btn" onClick={() => go({ kind: "area", id: area.id })}>{area.name}</button></>}
-        {" › "}<span aria-current="page">{group.name}</span>
+        {project && area && <><ChevronRight /> <button className="link-btn" onClick={() => go({ kind: "area", id: area.id })}>{area.name}</button></>}
+        <ChevronRight /><span aria-current="page">{group.name}</span>
       </nav>
       <header className="page-head">
         <div><h2>{group.name}</h2>{(project?.notes || area?.description && !project) && <p className="workspace-description">{project ? project.notes : area?.description}</p>}</div>
         <WorkspaceActions group={group} onPreview={!project ? () => go({ kind: "portal", id, preview: true }) : undefined} />
       </header>
-      {inactive && <p className="banner">Arquivado. Restaure o espaço para voltar a trabalhar nele.</p>}
-      <div className="workspace-tabs" aria-label="Seções do espaço">
-        {(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "notes"] as const)).map((key) => (
-          <button key={key} aria-pressed={tab === key} onClick={() => setTab(key)}>{labels[key]}</button>
-        ))}
-      </div>
-      {tab === "overview" && (
+      {inactive && <Notice tone="warning" title="Espaço arquivado">Restaure o espaço para voltar a trabalhar nele.</Notice>}
+      <Tabs value={tab} onChange={setTab} label="Seções do espaço" className="workspace-sections"
+        items={(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "notes"] as const)).map((key) => [key, labels[key]])}>
+      <TabPanel value="overview">
         <div className="overview">
           <section><h3>Próximas entregas</h3>{due.length ? due.map((t) => <TaskRow key={t.id} task={t} readOnly={!!inactive} />) :
             <p className="empty">Defina um prazo de entrega em uma tarefa para acompanhá-la aqui.</p>}
@@ -131,31 +135,30 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
           {reviews.some((t) => t.review && t.review.version !== t.content_version) && <p className="empty">Há entregas com nova versão que precisam ser revisadas.</p>}</section>}
           <section><h3>Projetos ativos</h3><GroupList groups={areaProjects.filter((p) => !p.deletedAt && !archived(p) && p.status === "active")} go={go} kind="project" /></section>
         </div>
-      )}
-      {tab === "tasks" && (
-        <>
+      </TabPanel>
+      <TabPanel value="tasks">
           <div className="mode-row task-toolbar">
-            <div className="seg">
-              {(["board", "list"] as const).map((key) => <button key={key} aria-pressed={key === mode} className={key === mode ? "on" : ""} onClick={() => {
+            <div className="seg" role="group" aria-label="Visualização de tarefas">
+              {([["board", <><LayoutGrid />Quadro</>], ["list", <><List />Lista</>]] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={key === mode} onClick={() => {
                 setMode(key); localStorage.setItem(`cerne:modo:${id}`, key);
-              }}>{key === "board" ? "Quadro" : "Lista"}</button>)}
+              }}>{label}</button>)}
             </div>
-            {kind === "area" && <select aria-label="Filtrar por projeto" value={selected} onChange={(e) => {
-              setFilter(e.target.value); localStorage.setItem(`cerne:filtro:${id}`, e.target.value);
+            {kind === "area" && <Select label="Filtrar por projeto" value={selected} onValueChange={(value) => {
+              setFilter(value); localStorage.setItem(`cerne:filtro:${id}`, value);
             }}>
               <option value="">Todos os projetos</option><option value="none">Sem projeto</option>
               {areaProjects.filter((p) => !p.deletedAt && !archived(p)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>}
+            </Select>}
           </div>
           {mode === "list" ? <TaskListView title="" tasks={visible} readOnly={!!inactive} defaults={inactive ? undefined : defaults} /> :
             <BoardView tasks={visible} home={defaults} readOnly={!!inactive} showProject={kind === "area"} />}
-        </>
-      )}
-      {tab === "projects" && <>
+      </TabPanel>
+      <TabPanel value="projects">
         {!inactive && <QuickAdd label="Nome do novo projeto" button="Criar projeto" submit={(name) => addProject(name, id)} />}
         <GroupList groups={areaProjects} go={go} kind="project" />
-      </>}
-      {tab === "notes" && <NotesSection areaId={areaId} projectId={project?.id} readOnly={!!inactive} noteId={noteId} />}
+      </TabPanel>
+      <TabPanel value="notes"><NotesSection areaId={areaId} projectId={project?.id} readOnly={!!inactive} noteId={noteId} /></TabPanel>
+      </Tabs>
     </>
   );
 }

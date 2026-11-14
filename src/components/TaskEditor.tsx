@@ -1,3 +1,9 @@
+import { Select } from "./ui/Select.tsx";
+import { Check, Trash2, X } from "lucide-react";
+import { ActionMenu, MenuItem } from "./ui/ActionMenu.tsx";
+import { Dialog } from "./ui/Dialog.tsx";
+import { Switch } from "./ui/Switch.tsx";
+import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { useEffect, useState } from "react";
 import { ItemFiles } from "./ItemFiles.tsx";
 import { TaskActivity } from "./TaskActivity.tsx";
@@ -16,6 +22,7 @@ const DOW = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export function TaskEditor() {
   const id = useUiStore((s) => s.editingTaskId);
+  const returnFocus = useUiStore((s) => s.editingTrigger);
   const close = useUiStore((s) => s.closeEditor);
   const tasks = useDataStore((s) => s.tasks);
   const columns = useDataStore((s) => s.columns);
@@ -47,7 +54,12 @@ export function TaskEditor() {
   const recChanged = (before?.type ?? "") !== rec.type || (before?.interval ?? 1) !== rec.interval
     || JSON.stringify(before?.weekdays ?? []) !== JSON.stringify(rec.weekdays);
   const dirty = !!draft && !!original && (Object.keys(draft).some((key) => draft[key as keyof Task] !== original[key as keyof Task]) || recChanged);
-  const dismiss = () => { if (!busy && (!dirty || window.confirm("Descartar as alterações desta tarefa?"))) close(); };
+  const dismiss = async () => {
+    if (!busy && (!dirty || await confirmAction({
+      title: "Descartar alterações?", description: "As alterações desta tarefa ainda não foram salvas.",
+      label: "Descartar", destructive: true,
+    }))) close();
+  };
 
   useEffect(() => {
     setDraft(task ?? null);
@@ -57,12 +69,6 @@ export function TaskEditor() {
     setNewTag("");
     setNewSub("");
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
   if (!id || !draft) return null;
   const set = <K extends keyof Task>(k: K, v: Task[K]) => setDraft({ ...draft, [k]: v });
 
@@ -118,54 +124,57 @@ export function TaskEditor() {
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={dismiss}>
-      <div className="modal task-editor" role="dialog" aria-modal="true" aria-label="Detalhes da tarefa" onMouseDown={(e) => e.stopPropagation()}>
+    <Dialog title="Detalhes da tarefa" className="task-editor" returnFocus={returnFocus} onClose={() => void dismiss()}>
         <input autoFocus aria-label="Título da tarefa" className="modal-title" value={draft.title} onChange={(e) => set("title", e.target.value)} />
         <label>Descrição<textarea rows={4} placeholder="Adicione detalhes, legenda ou referências" value={draft.notes} onChange={(e) => set("notes", e.target.value)} /></label>
         <div className="form-grid">
           <label>Dia de execução<input type="date" value={draft.whenDate ?? ""} onChange={(e) => set("whenDate", e.target.value || null)} /></label>
           <label>Prazo de entrega<input type="date" value={draft.deadline ?? ""} onChange={(e) => set("deadline", e.target.value || null)} /></label>
           <label>Status
-            <select value={draft.status === "canceled" || draft.status === "waiting" ? draft.status : columnIdOf(draft, statuses, custom) ?? ""} onChange={(e) => {
-              const value = e.target.value;
+            <Select label="Status" value={draft.status === "canceled" || draft.status === "waiting" ? draft.status : columnIdOf(draft, statuses, custom) ?? ""} onValueChange={(value) => {
               const selected = statuses.find((c) => c.id === value);
               if (selected) setDraft({ ...draft, status: selected.isDone ? "completed" : "open", ...movePatch(draft, selected, custom) });
               else set("status", value as Task["status"]);
             }}>
               {statuses.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
               <option value="waiting">Aguardando</option><option value="canceled">Cancelada</option>
-            </select>
+            </Select>
           </label>
           <label>Prioridade
-            <select value={draft.priority} onChange={(e) => set("priority", Number(e.target.value) as Task["priority"])}>
+            <Select label="Prioridade" value={String(draft.priority)} onValueChange={(value) => set("priority", Number(value) as Task["priority"])}>
               <option value={0}>Normal</option><option value={1}>Baixa</option>
               <option value={2}>Alta</option><option value={3}>Urgente</option>
-            </select>
+            </Select>
           </label>
           <label>Área
-            <select
+            <Select label="Área"
               value={draft.areaId ?? ""}
-              onChange={(e) => {
-                const areaId = e.target.value || null;
+              onValueChange={(value) => {
+                const areaId = value || null;
                 // Trocar de área solta o projeto que não pertence a ela.
                 const keep = projects.find((p) => p.id === draft.projectId)?.areaId === areaId;
                 setDraft({ ...draft, areaId, projectId: keep ? draft.projectId : null, columnId: null, shared: false });
               }}
             >
               <option value="">—</option>{areas.filter((a) => a.id === draft.areaId || (!archived(a) && !a.deletedAt)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            </Select>
           </label>
           <label>Projeto
-            <select value={draft.projectId ?? ""} disabled={!draft.areaId && !draft.projectId} onChange={(e) => setDraft({ ...draft, projectId: e.target.value || null, shared: false })}>
+            <Select label="Projeto" value={draft.projectId ?? ""} disabled={!draft.areaId && !draft.projectId} onValueChange={(value) => setDraft({ ...draft, projectId: value || null, shared: false })}>
               <option value="">{draft.areaId ? "—" : "Escolha uma área"}</option>
               {projectsForArea(projects.filter((p) => p.id === draft.projectId || (!archived(p) && !p.deletedAt)), draft.areaId, draft.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </Select>
           </label>
         </div>
         {scoped && !draft.areaId && !draft.projectId && <label className="inline"><input type="checkbox" checked={draft.inbox ?? inInbox(draft)} onChange={(e) => set("inbox", e.target.checked)} /> Manter na Entrada</label>}
-        {portal && draft.areaId && <label className="inline"><input type="checkbox" checked={!!draft.shared} disabled={!!unavailable || (!!activeProject && !activeProject.shared)} onChange={(e) => {
-          if (!e.target.checked || window.confirm("Mostrar o título, a descrição e os arquivos desta tarefa a quem tem acesso à área?")) set("shared", e.target.checked);
-        }} /> Compartilhar no portal{activeProject && !activeProject.shared && " (projeto interno)"}</label>}
+        {portal && draft.areaId && <Switch checked={!!draft.shared} disabled={!!unavailable || (!!activeProject && !activeProject.shared)}
+          label={activeProject && !activeProject.shared ? "Compartilhar no portal (projeto interno)" : "Compartilhar no portal"}
+          onChange={async (checked) => {
+            if (!checked || await confirmAction({
+              title: "Compartilhar tarefa?", description: "Pessoas com acesso à área poderão consultar o título, a descrição e os arquivos.",
+              label: "Compartilhar",
+            })) set("shared", checked);
+          }} />}
         <details className="item-section">
           <summary>Agendamento{draft.startTime ? ` · ${draft.startTime.slice(0, 5)}` : ""}</summary>
           <div className="form-grid">
@@ -177,9 +186,9 @@ export function TaskEditor() {
           <span className="form-label">Subtarefas</span>
           {forTask(subtasks, draft.id).map((st) => (
             <div key={st.id} className="sub-row">
-              <button type="button" className={`check small${st.status === "completed" ? " done" : ""}`} aria-label="Concluir subtarefa" onClick={() => void toggleSubtask(st)} />
+              <button type="button" className={`check small${st.status === "completed" ? " done" : ""}`} aria-label="Concluir subtarefa" onClick={() => void toggleSubtask(st)}>{st.status === "completed" && <Check />}</button>
               <span className={st.status === "completed" ? "sub-done" : ""}>{st.title}</span>
-              <button type="button" className="del" aria-label="Excluir subtarefa" onClick={() => void removeSubtask(st.id)}>×</button>
+              <button type="button" className="del" aria-label="Excluir subtarefa" onClick={() => void removeSubtask(st.id)}><X /></button>
             </div>
           ))}
           <input aria-label="Nova subtarefa" disabled={submittingSub} placeholder="+ subtarefa (Enter)" value={newSub} onChange={(e) => setNewSub(e.target.value)}
@@ -216,10 +225,10 @@ export function TaskEditor() {
         <div className="form-section">
           <span className="form-label">Repetir</span>
           <div className="tag-row">
-            <select value={rec.type} onChange={(e) => setRec({ ...rec, type: e.target.value as RecDraft["type"] })}>
+            <Select label="Repetição" value={rec.type} onValueChange={(value) => setRec({ ...rec, type: value as RecDraft["type"] })}>
               <option value="">Nunca</option><option value="daily">Diariamente</option><option value="weekly">Semanalmente</option>
               <option value="monthly">Mensalmente</option><option value="custom">A cada N dias</option>
-            </select>
+            </Select>
             {rec.type && (
               <label className="inline">a cada
                 <input type="number" min={1} style={{ width: 64 }} value={rec.interval} onChange={(e) => setRec({ ...rec, interval: Number(e.target.value) || 1 })} />
@@ -245,19 +254,18 @@ export function TaskEditor() {
         </>}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-actions editor-footer">
-          <details className="action-menu"><summary aria-label="Mais ações da tarefa">•••</summary><div className="action-panel">
-            <button className="danger" disabled={busy} onClick={async () => {
-              if (!window.confirm("Excluir esta tarefa e seu checklist, comentários e aprovações?")) return;
+          <ActionMenu label="Mais ações da tarefa" side="top">
+            <MenuItem destructive disabled={busy} onSelect={async () => {
+              if (!await confirmAction({ title: "Excluir tarefa?", description: "O checklist, os comentários e as aprovações da tarefa também serão excluídos.", label: "Excluir tarefa", destructive: true })) return;
               setBusy(true);
               if (await removeTask(draft.id)) close();
               setBusy(false);
-            }}>Excluir tarefa…</button>
-          </div></details>
+            }}><Trash2 />Excluir tarefa…</MenuItem>
+          </ActionMenu>
           <span className="spacer" />
-          <button className="btn ghost" disabled={busy} onClick={dismiss}>Cancelar</button>
+          <button className="btn outline" disabled={busy} onClick={() => void dismiss()}>Cancelar</button>
           <button className="btn" disabled={busy || !draft.title.trim()} onClick={() => void save()}>{busy ? "Salvando…" : "Salvar"}</button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

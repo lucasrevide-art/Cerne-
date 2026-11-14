@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight, Folder, LogOut, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { portalRepository, type PortalArea, type PortalSpace, type PortalTask } from "../lib/repository/portalRepository.ts";
 import { rank } from "../lib/search.ts";
@@ -50,14 +51,14 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
     .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? "")).slice(0, 8);
   const list = (label: string, items: PortalTask[]) => <section className="portal-section">
     <h3>{label}</h3>{items.length ? items.map((item) => <button className="portal-item" key={item.id} onClick={() => go({ area: current?.id, task: item.id })}>
-      <strong>{item.title}</strong><span>{current?.projects.find((p) => p.id === item.project_id)?.name}</span>
+      <strong>{item.title}<ArrowRight /></strong><span>{current?.projects.find((p) => p.id === item.project_id)?.name}</span>
       <span>{reviewLabel(item.review, item.content_version) || item.stage}{item.deadline && ` · Entrega ${shortDate(item.deadline)}`}</span>
     </button>) : <p className="empty">Nenhuma entrega nesta seção.</p>}
   </section>;
   return <main className="portal">
     <header className="portal-header"><strong>Cerne</strong>
-      {preview ? <button className="btn ghost" onClick={exit}>Sair da prévia</button> :
-        <div className="mode-row"><button className="btn ghost" onClick={() => go({})}>Áreas compartilhadas</button><button className="btn ghost" onClick={signOut}>Sair</button></div>}
+      {preview ? <button className="btn outline" onClick={exit}>Sair da prévia</button> :
+        <div className="mode-row"><button className="btn outline" onClick={() => go({})}><Folder />Áreas compartilhadas</button><button className="btn outline" onClick={signOut}><LogOut />Sair</button></div>}
     </header>
     {preview && <Notice tone="info">Prévia do cliente</Notice>}
     {loading && <p role="status">Carregando portal…</p>}
@@ -70,14 +71,14 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
     {current && <>
       <h2>{current.name}</h2>
       {selection.task || selection.note ? <>
-        <button className="btn ghost" onClick={() => go({ area: current.id })}>‹ Visão da área</button>
+        <button className="btn outline" onClick={() => go({ area: current.id })}><ArrowLeft />Visão da área</button>
         {task ? <PortalTaskDetail key={task.id} task={task} permission={preview || current.permission === "owner" ? "view" : current.permission} refresh={refresh} /> :
           note ? <section className="stack"><h3>{note.title || note.body.split("\n").find(Boolean) || "Nota"}</h3>
             <FormattedNote body={note.body} /><ItemFiles key={note.id} id={note.id} entity="note" /></section> :
           <p className="empty">Este conteúdo está indisponível para sua conta.</p>}
       </> : <>
         {current.description && <p>{current.description}</p>}
-        <input className="portal-search" aria-label="Buscar na área" placeholder="Buscar tarefas, projetos e notas" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="portal-search-field"><Search /><input className="portal-search" aria-label="Buscar na área" placeholder="Buscar tarefas, projetos e notas" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         {query.trim() ? list("Tarefas encontradas", tasks) : <>
           {list("Aguardando sua participação", pending)}
           {updates.length > 0 && <section className="portal-section"><h3>Atividade recente</h3>{updates.map((item) => (
@@ -92,7 +93,7 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
           {list("Entregas recentes", recent)}
         </>}
         {!!projects.length && <section className="portal-section"><h3>Projetos</h3><div className="mode-row">
-          {projects.map((project) => <button className="btn ghost" key={project.id} aria-pressed={projectId === project.id} onClick={() => { setProjectId(projectId === project.id ? "" : project.id); setQuery(""); }}>{project.name}</button>)}
+          {projects.map((project) => <button className="btn outline" key={project.id} aria-pressed={projectId === project.id} onClick={() => { setProjectId(projectId === project.id ? "" : project.id); setQuery(""); }}>{project.name}</button>)}
         </div></section>}
         {!!notes.length && <section className="portal-section"><h3>Notas</h3>{notes.map((item) => <button className="portal-item" key={item.id} onClick={() => go({ area: current.id, note: item.id })}>{item.title || item.body.split("\n").find(Boolean) || "Nota"}</button>)}</section>}
       </>}
@@ -121,11 +122,11 @@ function PortalTaskDetail({ task, permission, refresh }: { task: PortalTask; per
       <label>Título<input required value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       <label>Descrição<textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
       <div className="mode-row"><button className="btn" disabled={busy}>{busy ? "Salvando…" : "Salvar"}</button>
-        <button type="button" className="btn ghost" disabled={busy} onClick={() => setEditing(false)}>Cancelar</button></div>
+        <button type="button" className="btn outline" disabled={busy} onClick={() => setEditing(false)}>Cancelar</button></div>
       {error && <p role="alert" className="error">{error}</p>}
     </form> : <>
       <FormattedNote body={task.notes} />
-      {permission === "edit" && <button className="btn ghost" onClick={() => { setTitle(task.title); setNotes(task.notes); setVersion(task.content_version); setEditing(true); }}>Editar conteúdo</button>}
+      {permission === "edit" && <button className="btn outline" onClick={() => { setTitle(task.title); setNotes(task.notes); setVersion(task.content_version); setEditing(true); }}>Editar conteúdo</button>}
     </>}
     <ItemFiles id={task.id} entity="task" />
     <TaskActivity id={task.id} version={task.content_version} permission={permission} onChange={() => void refresh()} />

@@ -43,14 +43,14 @@ export function TaskActivity({ id, version, permission, shared, onChange }: {
     <h3>Comentários e aprovação</h3>
     {status && <Notice tone={tone} role="status">{status} · versão {version}</Notice>}
     {owner && shared && !awaiting && !(last?.kind === "approved" && last.version === version) &&
-      <button className="btn ghost" disabled={busy} onClick={() => void act("requested")}>Solicitar aprovação da versão {version}</button>}
+      <button className="btn outline" disabled={busy} onClick={() => void act("requested")}>Solicitar aprovação da versão {version}</button>}
     {(owner || canReview) && <>
       <label>{awaiting && canReview ? "Comentário ou ajustes solicitados" : "Comentário"}<textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} /></label>
       {owner && <label className="inline"><input type="checkbox" checked={internal || !shared} disabled={!shared} onChange={(e) => setInternal(e.target.checked)} /> Comentário interno</label>}
       <div className="mode-row">
-        <button className="btn ghost" disabled={busy || !body.trim()} onClick={() => void act("comment")}>Comentar</button>
+        <button className="btn outline" disabled={busy || !body.trim()} onClick={() => void act("comment")}>Comentar</button>
         {awaiting && canReview && <>
-          <button className="btn ghost" disabled={busy || !body.trim()} onClick={() => void act("changes")}>Solicitar ajustes</button>
+          <button className="btn outline" disabled={busy || !body.trim()} onClick={() => void act("changes")}>Solicitar ajustes</button>
           <button className="btn" disabled={busy} onClick={() => void act("approved")}>Aprovar versão {version}</button>
         </>}
       </div>

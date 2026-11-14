@@ -1,3 +1,6 @@
+import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
+import { confirmAction } from "../components/ui/ConfirmDialog.tsx";
+import { Switch } from "../components/ui/Switch.tsx";
 import { useState } from "react";
 import { noteTitle } from "../lib/supabase/mappers.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -21,14 +24,14 @@ export function NotesSection({ areaId, projectId, readOnly, noteId }: {
     {!list.length && <p className="empty">Crie uma nota para reunir ideias, referências e conteúdo do trabalho.</p>}
     <div className="note-grid">
       {list.map((n) => <button key={n.id} className="note-card" onClick={() => setOpenId(n.id)}>
-        <strong>{n.title || noteTitle(n.body)}</strong>
+        <strong><FileText />{n.title || noteTitle(n.body)}</strong>
         <span>{projects.find((p) => p.id === n.projectId)?.name}</span>
         {n.shared !== undefined && <small>{n.shared ? "Compartilhada" : "Interna"}</small>}
       </button>)}
       {!readOnly && (!projectId || scoped) && <button className="note-card new" disabled={busy} onClick={async () => {
         setBusy(true); const created = await addNote(areaId, projectId); setBusy(false);
         if (created) setOpenId(created.id);
-      }}>{busy ? "Criando…" : "+ Nova nota"}</button>}
+      }}>{busy ? "Criando…" : <><Plus />Nova nota</>}</button>}
     </div>
   </>;
 }
@@ -52,10 +55,10 @@ function NoteEditor({ note, onBack, readOnly }: { note: Note; onBack: () => void
     setBusy(false);
   };
   return <div className="stack">
-    <div className="mode-row"><button className="btn ghost" disabled={busy} onClick={() => {
-      if (!dirty || window.confirm("Descartar as mudanças nesta nota?")) onBack();
-    }}>‹ Notas</button>
-    {!editing && !readOnly && <button className="btn ghost" onClick={() => setEditing(true)}>Editar</button>}</div>
+    <div className="mode-row"><button className="btn outline" disabled={busy} onClick={async () => {
+      if (!dirty || await confirmAction({ title: "Descartar alterações?", description: "As mudanças nesta nota ainda não foram salvas.", label: "Descartar", destructive: true })) onBack();
+    }}><ArrowLeft />Notas</button>
+    {!editing && !readOnly && <button className="btn outline" onClick={() => setEditing(true)}>Editar</button>}</div>
     {editing ? <form className="stack" onSubmit={(e) => {
       e.preventDefault();
       void run(() => update(note.id, { body: draft.body, ...(scoped ? { title: draft.title.trim() } : {}), ...(portal ? { shared: draft.shared } : {}) }), () => {
@@ -65,17 +68,17 @@ function NoteEditor({ note, onBack, readOnly }: { note: Note; onBack: () => void
       {scoped && <label>Título<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>}
       <label>Conteúdo<textarea className="note-body" rows={8} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} /></label>
       <small>Use **texto** para negrito. Links com https:// ficam clicáveis ao salvar.</small>
-      {portal && note.areaId && <label className="inline"><input type="checkbox" checked={draft.shared} onChange={(e) => setDraft({ ...draft, shared: e.target.checked })} /> Compartilhar no portal da área</label>}
+      {portal && note.areaId && <Switch checked={draft.shared} onChange={(shared) => setDraft({ ...draft, shared })} label="Compartilhar no portal da área" />}
       <button className="btn" disabled={busy}>{busy ? "Salvando…" : "Salvar nota"}</button>
     </form> : <>
       <h3>{note.title || noteTitle(note.body)}</h3><FormattedNote body={note.body} />
       {!readOnly && <div className="mode-row">
-        <button className="btn ghost" disabled={busy} onClick={() => void run(() => createTask({
+        <button className="btn outline" disabled={busy} onClick={() => void run(() => createTask({
           title: note.title || noteTitle(note.body), notes: note.body, areaId: note.areaId, projectId: note.projectId,
         }), () => setMessage("Tarefa criada com o texto da nota. A nota e seus arquivos continuam disponíveis."))}>Criar tarefa com a nota</button>
-        <button className="btn ghost danger" disabled={busy} onClick={() => {
-          if (window.confirm("Excluir esta nota e remover o acesso aos arquivos vinculados?")) void run(() => remove(note.id), onBack);
-        }}>Excluir nota…</button>
+        <button className="btn outline danger" disabled={busy} onClick={async () => {
+          if (await confirmAction({ title: "Excluir nota?", description: "Os arquivos vinculados a esta nota também ficarão indisponíveis.", label: "Excluir nota", destructive: true })) void run(() => remove(note.id), onBack);
+        }}><Trash2 />Excluir nota…</button>
       </div>}
     </>}
     {portal && <ItemFiles id={note.id} entity="note" editable={!readOnly} />}

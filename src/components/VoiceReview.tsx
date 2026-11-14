@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { Select } from "./ui/Select.tsx";
+import { Dialog } from "./ui/Dialog.tsx";
+import { useState } from "react";
 import { projectsForArea } from "../lib/dashboard.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import type { VoiceDraft } from "../lib/voice.ts";
@@ -12,14 +14,13 @@ export function VoiceReview({ draft: initial, onClose }: { draft: VoiceDraft; on
   const [d, setD] = useState(initial);
   const set = <K extends keyof VoiceDraft>(k: K, v: VoiceDraft[K]) => setD((x) => ({ ...x, [k]: v }));
 
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [onClose]);
+  const [busy, setBusy] = useState(false);
+  const error = useDataStore((state) => state.error);
 
   const create = async () => {
-    await addTask({
+    if (busy) return;
+    setBusy(true);
+    const saved = await addTask({
       title: d.title.trim(),
       notes: d.notes,
       when: d.date ? "date" : null,
@@ -33,37 +34,36 @@ export function VoiceReview({ draft: initial, onClose }: { draft: VoiceDraft; on
       amount: d.financial ? d.amount : null,
       category: d.financial ? d.category : null,
     });
-    onClose();
+    setBusy(false);
+    if (saved) onClose();
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal">
-        <strong>Conferir tarefa</strong>
+    <Dialog title="Conferir tarefa" onClose={() => { if (!busy) onClose(); }}>
         {d.transcript && <p className="empty" style={{ margin: 0, fontSize: 13 }}>“{d.transcript}”</p>}
-        <input className="modal-title" value={d.title} onChange={(e) => set("title", e.target.value)} />
+        <input aria-label="Título da tarefa" className="modal-title" value={d.title} onChange={(e) => set("title", e.target.value)} />
         <textarea rows={2} placeholder="Notas" value={d.notes} onChange={(e) => set("notes", e.target.value)} />
         <div className="form-grid">
           <label>Data<input type="date" value={d.date ?? ""} onChange={(e) => set("date", e.target.value || null)} /></label>
           <label>Horário<input type="time" step={900} value={d.time ?? ""} onChange={(e) => set("time", e.target.value || null)} /></label>
           <label>Duração (min)<input type="number" min={15} step={15} disabled={!d.time} value={d.durationMinutes ?? 60} onChange={(e) => set("durationMinutes", Number(e.target.value))} /></label>
           <label>Área
-            <select
+            <Select label="Área"
               value={d.areaId ?? ""}
-              onChange={(e) => {
-                const areaId = e.target.value || null;
+              onValueChange={(value) => {
+                const areaId = value || null;
                 const keep = projects.find((p) => p.id === d.projectId)?.areaId === areaId;
                 setD((x) => ({ ...x, areaId, projectId: keep ? x.projectId : null }));
               }}
             >
               <option value="">—</option>{areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            </Select>
           </label>
           <label>Projeto
-            <select value={d.projectId ?? ""} disabled={!d.areaId && !d.projectId} onChange={(e) => set("projectId", e.target.value || null)}>
+            <Select label="Projeto" value={d.projectId ?? ""} disabled={!d.areaId && !d.projectId} onValueChange={(value) => set("projectId", value || null)}>
               <option value="">{d.areaId ? "—" : "Escolha uma área"}</option>
               {projectsForArea(projects, d.areaId, d.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="inline" style={{ alignSelf: "end" }}>
             <input type="checkbox" checked={d.financial} onChange={(e) => set("financial", e.target.checked)} /> Financeira
@@ -86,12 +86,12 @@ export function VoiceReview({ draft: initial, onClose }: { draft: VoiceDraft; on
             })}
           </div>
         )}
+        {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-actions">
           <span style={{ flex: 1 }} />
-          <button className="btn ghost" onClick={onClose}>Descartar</button>
-          <button className="btn" disabled={!d.title.trim()} onClick={() => void create()}>Criar tarefa</button>
+          <button className="btn outline" disabled={busy} onClick={onClose}>Descartar</button>
+          <button className="btn" disabled={busy || !d.title.trim()} onClick={() => void create()}>{busy ? "Salvando…" : "Criar tarefa"}</button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

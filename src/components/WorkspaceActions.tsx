@@ -1,3 +1,7 @@
+import { Archive, ArchiveRestore, Eye, Pencil, Share2, Trash2 } from "lucide-react";
+import { ActionMenu, MenuItem, MenuSeparator } from "./ui/ActionMenu.tsx";
+import { Dialog } from "./ui/Dialog.tsx";
+import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { useState } from "react";
 import { useDataStore } from "../stores/dataStore.ts";
 import { archived } from "../lib/workspaces.ts";
@@ -24,8 +28,12 @@ export function WorkspaceActions({ group, onPreview }: { group: Area | Project; 
     if (ok) setPanel(null);
     setBusy(false);
   };
-  const lifecycle = (restore = false, remove = false) => {
-    if (remove && !window.confirm(`Mover “${group.name}” para a lixeira? As tarefas, notas e arquivos permanecem vinculados. O acesso pelo portal fica suspenso até a restauração.`)) return;
+  const lifecycle = async (restore = false, remove = false) => {
+    if (remove && !await confirmAction({
+      title: `Mover “${group.name}” para a lixeira?`,
+      description: "As tarefas, notas e arquivos continuam vinculados. O acesso pelo portal fica suspenso até a restauração.",
+      label: "Mover para a lixeira", destructive: true,
+    })) return;
     const date = restore ? null : stamp();
     void run(() => {
       if (remove) {
@@ -40,39 +48,36 @@ export function WorkspaceActions({ group, onPreview }: { group: Area | Project; 
   };
   return (
     <div className="workspace-actions">
-      <details className="action-menu">
-        <summary aria-label={`Ações de ${group.name}`}>•••</summary>
-        <div className="action-panel">
-          {!group.deletedAt && <button disabled={busy} onClick={() => { setName(group.name); setDescription(isProject ? group.notes : group.description ?? ""); setPanel("edit"); }}>Editar nome e descrição</button>}
+      <ActionMenu label={`Ações de ${group.name}`}>
+          {!group.deletedAt && <MenuItem disabled={busy} onSelect={() => { setName(group.name); setDescription(isProject ? group.notes : group.description ?? ""); setPanel("edit"); }}><Pencil />Editar nome e descrição</MenuItem>}
           {portal && !inactive && !group.deletedAt && (isProject ? (
-            <button disabled={busy || !group.areaId} onClick={() => {
-              if (group.shared || window.confirm("Mostrar este projeto no portal da área? As tarefas e notas aparecem conforme a visibilidade de cada item.")) {
+            <MenuItem disabled={busy || !group.areaId} onSelect={async () => {
+              if (group.shared || await confirmAction({ title: "Compartilhar projeto?", description: "O projeto aparece no portal da área. Cada tarefa e nota mantém sua própria visibilidade.", label: "Compartilhar" })) {
                 void run(() => updateProject(group.id, { shared: !group.shared }));
               }
-            }}>{group.shared ? "Tornar projeto interno" : "Compartilhar projeto"}</button>
+            }}><Share2 />{group.shared ? "Tornar projeto interno" : "Compartilhar projeto"}</MenuItem>
           ) : (
             <>
-              <button onClick={() => setPanel("share")}>Compartilhar e gerenciar acesso</button>
-              {onPreview && <button onClick={onPreview}>Ver como cliente</button>}
+              <MenuItem onSelect={() => setPanel("share")}><Share2 />Compartilhar e gerenciar acesso</MenuItem>
+              {onPreview && <MenuItem onSelect={onPreview}><Eye />Ver como cliente</MenuItem>}
             </>
           ))}
-          {(scoped || isProject) && !group.deletedAt && <button disabled={busy} onClick={() => lifecycle(inactive)}>{inactive ? "Restaurar do arquivo" : "Arquivar"}</button>}
-          {scoped && !group.deletedAt && <button className="danger" disabled={busy} onClick={() => lifecycle(false, true)}>Mover para a lixeira…</button>}
-        </div>
-      </details>
+          {(scoped || isProject) && !group.deletedAt && <MenuItem disabled={busy} onSelect={() => void lifecycle(inactive)}>{inactive ? <ArchiveRestore /> : <Archive />}{inactive ? "Restaurar do arquivo" : "Arquivar"}</MenuItem>}
+          {scoped && !group.deletedAt && <><MenuSeparator /><MenuItem destructive disabled={busy} onSelect={() => void lifecycle(false, true)}><Trash2 />Mover para a lixeira…</MenuItem></>}
+      </ActionMenu>
       {panel === "edit" && (
-        <div className="modal-backdrop">
-          <form className="modal" role="dialog" aria-modal="true" aria-label="Editar nome e descrição" onSubmit={(e) => {
+        <Dialog title="Editar nome e descrição" onClose={() => { if (!busy) setPanel(null); }}>
+          <form className="stack" onSubmit={(e) => {
             e.preventDefault();
             if (name.trim()) void run(() => isProject ? updateProject(group.id, { name: name.trim(), notes: description }) :
               updateArea(group.id, { name: name.trim(), ...(scoped ? { description } : {}) }));
           }}>
             <label>Nome<input autoFocus value={name} required onChange={(e) => setName(e.target.value)} /></label>
             {(isProject || scoped) && <label>Descrição<textarea value={description} onChange={(e) => setDescription(e.target.value)} /></label>}
-            <div className="modal-actions"><button type="button" className="btn ghost" disabled={busy} onClick={() => setPanel(null)}>Cancelar</button><button className="btn" disabled={busy || !name.trim()}>{busy ? "Salvando…" : "Salvar"}</button></div>
+            <div className="modal-actions"><button type="button" className="btn outline" disabled={busy} onClick={() => setPanel(null)}>Cancelar</button><button className="btn" disabled={busy || !name.trim()}>{busy ? "Salvando…" : "Salvar"}</button></div>
             <WorkspaceError />
           </form>
-        </div>
+        </Dialog>
       )}
       {panel === "share" && "color" in group && <ShareArea area={group} close={() => setPanel(null)} />}
     </div>

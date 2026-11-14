@@ -1,3 +1,5 @@
+import { Select } from "../components/ui/Select.tsx";
+import { CheckSquare, Plus } from "lucide-react";
 import { useState } from "react";
 import { progress } from "../lib/subtasks.ts";
 import { byColumn, dropOrder, movePatch, type ColumnDef } from "../lib/board.ts";
@@ -65,21 +67,21 @@ export function BoardView({ tasks, home, showProject, readOnly }: {
                     {project && <span className="chip">{project.name}</span>}
                     {task.deadline && <span>Prazo {shortDate(task.deadline)}</span>}
                     {task.priority >= 2 && <span className="chip prio">{task.priority === 3 ? "Urgente" : "Alta"}</span>}
-                    {sub.total > 0 && <span aria-label="Checklist">{sub.done}/{sub.total} ✓</span>}
+                    {sub.total > 0 && <span aria-label="Checklist"><CheckSquare />{sub.done}/{sub.total}</span>}
                     {task.shared && <span className="chip">Compartilhada</span>}
                   </div>
-                  {!readOnly && <select aria-label={`Mover ${task.title}`} value="" disabled={!!moving} onChange={(e) => {
-                    const target = columns.find((column) => column.id === e.target.value);
+                  {!readOnly && <Select label={`Mover ${task.title}`} value="" disabled={!!moving} onValueChange={(value) => {
+                    const target = columns.find((column) => column.id === value);
                     if (target) void move(task.id, target);
                   }}>
                     <option value="">Mover para…</option>
                     {columns.filter((column) => column.id !== c.id).map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
-                  </select>}
+                  </Select>}
                 </article>
               );
             })}
           </div>
-          {!readOnly && !c.isDone && <QuickAdd label={`Nova tarefa em ${c.name}`} button="+" submit={(title) => addTask({
+          {!readOnly && !c.isDone && <QuickAdd label={`Nova tarefa em ${c.name}`} button={<Plus />} submit={(title) => addTask({
             title, ...home, ...(custom ? { columnId: c.id } : { boardStage: c.id as Task["boardStage"] }),
             sortOrder: (grouped[c.id].at(-1)?.sortOrder ?? 0) + 1,
           })} />}
@@ -90,7 +92,7 @@ export function BoardView({ tasks, home, showProject, readOnly }: {
           const saved = await addColumn(name, home.areaId);
           if (saved) setCreatingColumn(false);
           return saved;
-        }} /> : <button className="btn ghost" onClick={() => setCreatingColumn(true)}>+ Nova coluna</button>}
+        }} /> : <button className="btn outline" onClick={() => setCreatingColumn(true)}><Plus />Nova coluna</button>}
       </div>}
     </div>
   );

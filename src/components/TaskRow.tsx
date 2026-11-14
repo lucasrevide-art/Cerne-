@@ -1,3 +1,4 @@
+import { CalendarDays, Check, Flag, Repeat2, Star } from "lucide-react";
 import { useState } from "react";
 import { inInbox } from "../lib/workspaces.ts";
 import { shortDate } from "../lib/format.ts";
@@ -27,12 +28,12 @@ export function TaskRow({ task, readOnly, summary }: { task: Task; readOnly?: bo
 
   return (
     <div className={`task${summary ? " task-summary" : ""}${done ? " done" : ""}`}>
-      {!readOnly && <button className={`check${done ? " done" : ""}`} disabled={busy} aria-label={done ? "Reabrir tarefa" : "Concluir tarefa"} onClick={async () => { setBusy(true); await toggle(task); setBusy(false); }} />}
+      {!readOnly && <button className={`check${done ? " done" : ""}`} disabled={busy} aria-label={done ? "Reabrir tarefa" : "Concluir tarefa"} onClick={async () => { setBusy(true); await toggle(task); setBusy(false); }}>{done && <Check />}</button>}
       <div className={summary ? "task-brief" : "task-identity"}>
         <button className="title task-title" onClick={() => openEditor(task.id)}>{task.title}</button>
         {summary && <div className="task-brief-meta">
-          {summary.scheduled && <span>Agenda · {summary.scheduled}</span>}
-          {task.deadline && <span>Entrega · {shortDate(task.deadline)}</span>}
+          {summary.scheduled && <span><CalendarDays />Agenda · {summary.scheduled}</span>}
+          {task.deadline && <span><Flag />Entrega · {shortDate(task.deadline)}</span>}
           {task.isFocus && <span>Foco do dia</span>}
           {task.priority >= 2 && <span className="task-brief-priority">{task.priority === 3 ? "Urgente" : "Prioridade alta"}</span>}
           {label && <span>{label}</span>}
@@ -45,12 +46,12 @@ export function TaskRow({ task, readOnly, summary }: { task: Task; readOnly?: bo
         <span key={g!.id} className="chip tag" style={{ ["--tag" as string]: g!.color }}>{g!.name}</span>
       ))}
       {!summary && sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
-      {!summary && recurring && <span className="chip" title="Recorrente">↻</span>}
+      {!summary && recurring && <span className="chip" title="Recorrente"><Repeat2 /></span>}
       {!summary && task.deadline && <span className="chip">prazo {shortDate(task.deadline)}</span>}
       {!done && !readOnly && (
-        <button className={`star${task.isFocus ? " on" : ""}`} aria-pressed={task.isFocus} aria-label="Marcar foco do dia" title="Foco do dia" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>
+        <button className={`star${task.isFocus ? " on" : ""}`} aria-pressed={task.isFocus} aria-label="Marcar foco do dia" title="Foco do dia" onClick={() => void setFocus(task.isFocus ? null : task.id)}><Star /></button>
       )}
-      {scoped && !readOnly && inInbox(task) && <button className="btn ghost small" disabled={busy} onClick={async () => {
+      {scoped && !readOnly && inInbox(task) && <button className="btn outline small" disabled={busy} onClick={async () => {
         setBusy(true); await update(task.id, { inbox: false }); setBusy(false);
       }}>Organizar</button>}
     </div>

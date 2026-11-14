@@ -1,3 +1,4 @@
+import { Ellipsis, Pause, Play, RotateCcw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BREAK_PRESETS, FOCUS_PRESETS, format, remainingMs } from "../lib/pomodoro.ts";
 import { usePomodoroStore } from "../stores/pomodoroStore.ts";
@@ -41,23 +42,23 @@ export function PomodoroWidget() {
       {open && (
         <div className="pomo-panel">
           <div className="seg">
-            <button className={s.mode === "focus" ? "on" : ""} onClick={() => choose("focus", FOCUS_PRESETS[1])}>Foco</button>
-            <button className={s.mode === "break" ? "on" : ""} onClick={() => choose("break", BREAK_PRESETS[0])}>Descanso</button>
+            <button aria-pressed={s.mode === "focus"} onClick={() => choose("focus", FOCUS_PRESETS[1])}>Foco</button>
+            <button aria-pressed={s.mode === "break"} onClick={() => choose("break", BREAK_PRESETS[0])}>Descanso</button>
           </div>
           <div className="seg">
             {presets.map((m) => (
-              <button key={m} className={s.durationMin === m ? "on" : ""} onClick={() => choose(s.mode, m)}>{m} min</button>
+              <button key={m} aria-pressed={s.durationMin === m} onClick={() => choose(s.mode, m)}>{m} min</button>
             ))}
           </div>
-          <button className="btn ghost" onClick={reset}>Reiniciar</button>
+          <button className="btn outline" onClick={reset}><RotateCcw />Reiniciar</button>
         </div>
       )}
       <div className={`pomo-pill ${s.mode}`}>
         <button className="pomo-main" onClick={toggle} aria-label={s.running ? "Pausar" : "Iniciar"}>
-          <span>{s.running ? "❚❚" : "▶"}</span>
+          {s.running ? <Pause /> : <Play />}
           <span className="pomo-time">{time}</span>
         </button>
-        <button className="pomo-more" onClick={() => setOpen(!open)} aria-label="Opções do pomodoro">{open ? "×" : "⋯"}</button>
+        <button className="pomo-more" onClick={() => setOpen(!open)} aria-label="Opções do pomodoro" aria-expanded={open}>{open ? <X /> : <Ellipsis />}</button>
       </div>
     </div>
   );

@@ -1,4 +1,7 @@
+import { CalendarDays, CheckCheck, ChevronDown, ChevronRight, Folder, Inbox, LogOut, Menu, Moon, Search, Settings, Sun, Timer, User } from "lucide-react";
+import { ActionMenu, MenuItem, MenuSeparator } from "./components/ui/ActionMenu.tsx";
 import { useCallback, useEffect, useState } from "react";
+import { Dialog } from "./components/ui/Dialog.tsx";
 import { Notice } from "./components/Notice.tsx";
 import { AuthScreen } from "./components/AuthScreen.tsx";
 import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
@@ -94,6 +97,13 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   const closePalette = useUiStore((s) => s.closePalette);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [mobileNav, setMobileNav] = useState(false);
+  const [compact, setCompact] = useState(() => matchMedia("(max-width: 680px)").matches);
+  useEffect(() => {
+    const query = matchMedia("(max-width: 680px)");
+    const update = () => { setCompact(query.matches); if (!query.matches) setMobileNav(false); };
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [tools, setTools] = useState(false);
   const navigate = useCallback((next: View) => { setMobileNav(false); go(next); }, [go]);
 
@@ -109,11 +119,15 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     go={({ area, task, note }) => navigate({ kind: "portal", id: area, taskId: task, noteId: note, preview: true })}
     exit={() => view.id && navigate({ kind: "area", id: view.id })} signOut={() => void signOut()} />;
 
-  const nav = (kind: SimpleView, label: string) => (
-    <button aria-current={view.kind === kind ? "page" : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
-      <span>{label}</span>
-    </button>
-  );
+  const navIcons = { inbox: Inbox, agenda: CalendarDays, areas: Folder, completed: CheckCheck, settings: Settings };
+  const nav = (kind: SimpleView, label: string) => {
+    const Icon = navIcons[kind];
+    return (
+      <button aria-current={view.kind === kind ? "page" : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
+        <Icon /><span>{label}</span>
+      </button>
+    );
+  };
   const currentProject = view.kind === "project" && projects.find((p) => p.id === view.id);
   const projectLink = (p: typeof projects[number]) => (
     <div key={p.id} className="sidebar-group-row sidebar-project">
@@ -137,11 +151,10 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
       initialTab={view.noteId ? "notes" : undefined} go={navigate} />; break;
   }
 
-  return <div className="layout">
-    <div className="mobile-header"><strong>Cerne</strong><button className="btn ghost" aria-expanded={mobileNav} onClick={() => setMobileNav(!mobileNav)}>{mobileNav ? "Fechar menu" : "Menu"}</button></div>
-    <aside className={`sidebar${mobileNav ? " mobile-open" : ""}`} aria-label="Navegação principal">
+  const sidebar = (
+    <aside className="sidebar" aria-label="Navegação principal">
       <h1>Cerne</h1>
-      <button className="nav-item search-link" onClick={togglePalette}><span>⌕ Buscar</span><kbd>⌘ K</kbd></button>
+      <button className="nav-item search-link" onClick={togglePalette}><Search /><span>Buscar</span><kbd>⌘ K</kbd></button>
       {nav("inbox", "Entrada")}
       {nav("agenda", "Agenda")}
       {nav("areas", "Áreas")}
@@ -152,7 +165,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
           return <div className="area-group" key={area.id}>
             <div className="sidebar-group-row">
               <button className="icon-button" aria-label={`${open ? "Recolher" : "Expandir"} ${area.name}`} aria-expanded={open}
-                onClick={() => setExpanded({ ...expanded, [area.id]: !open })}>{open ? "⌄" : "›"}</button>
+                onClick={() => setExpanded({ ...expanded, [area.id]: !open })}>{open ? <ChevronDown /> : <ChevronRight />}</button>
               <button className={`nav-item${current ? " active" : ""}`} aria-current={current ? "page" : undefined}
                 onClick={() => navigate({ kind: "area", id: area.id })}>{area.name}</button>
               <WorkspaceActions group={area} onPreview={() => navigate({ kind: "portal", id: area.id, preview: true })} />
@@ -164,13 +177,23 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
       </div>
       <div className="spacer" />
       {nav("completed", "Concluídas")}
-      <button className="nav-item" aria-expanded={tools} onClick={() => setTools(!tools)}>Ferramentas de foco</button>
-      <details className="profile-menu"><summary title={session?.user.email}>Perfil</summary>
-        {nav("settings", "Conta e dados")}
-        <button className="nav-item" onClick={toggleTheme}>{theme === "dark" ? "Tema claro" : "Tema escuro"}</button>
-        <button className="nav-item" onClick={() => void signOut()}>Sair</button>
-      </details>
+      <button className="nav-item" aria-expanded={tools} onClick={() => setTools(!tools)}><Timer />Ferramentas de foco</button>
+      <ActionMenu label="Perfil" side="top" heading={<><strong>Minha conta</strong><small>{session?.user.email}</small></>}
+        trigger={<><User /><span>Perfil</span><ChevronDown /></>}>
+        <MenuItem onSelect={() => navigate({ kind: "settings" })}><Settings />Conta e dados</MenuItem>
+        <MenuItem onSelect={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}{theme === "dark" ? "Tema claro" : "Tema escuro"}</MenuItem>
+        <MenuSeparator />
+        <MenuItem onSelect={() => void signOut()}><LogOut />Sair</MenuItem>
+      </ActionMenu>
     </aside>
+  );
+
+  return <div className="layout">
+    {compact && <div className="mobile-header"><strong>Cerne</strong>
+      <button className="btn outline icon" aria-label="Menu" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu /></button>
+    </div>}
+    {compact && mobileNav && <Dialog title="Navegação" className="navigation-sheet" onClose={() => setMobileNav(false)}>{sidebar}</Dialog>}
+    {!compact && sidebar}
     <main className={`main${["agenda", "project", "area"].includes(view.kind) ? " wide" : ""}${view.kind === "inbox" ? " inbox-main" : ""}`}>
       {error && <Notice tone="error" role="alert" action={!loaded && <button className="btn text" onClick={() => void load()}>Tentar novamente</button>}>{error}</Notice>}
       {loaded ? content : !error && <p role="status">Carregando seus dados…</p>}

@@ -1,3 +1,6 @@
+import { ArchiveRestore, Download, KeyRound, Tag, Trash2, Upload, X } from "lucide-react";
+import { confirmAction } from "../components/ui/ConfirmDialog.tsx";
+import { Notice } from "../components/Notice.tsx";
 import { useRef, useState } from "react";
 import { buildBackup, parseBackup, summarize } from "../lib/backup.ts";
 import { backupRepository } from "../lib/repository/backupRepository.ts";
@@ -50,9 +53,10 @@ export function SettingsView() {
     setBusy(true);
     try {
       const tables = parseBackup(await file.text());
-      const ok = window.confirm(
-        `Importar ${summarize(tables)}?\n\nRegistros com o mesmo id serão atualizados; nada será apagado.`,
-      );
+      const ok = await confirmAction({
+        title: "Restaurar backup?", description: `${summarize(tables)}. Registros com o mesmo identificador serão atualizados.`,
+        label: "Restaurar backup",
+      });
       if (ok) {
         await backupRepository.importAll(tables);
         await load();
@@ -70,37 +74,38 @@ export function SettingsView() {
       <h2>Conta e dados</h2>
       <p className="empty">Conectado como {email}</p>
 
-      <div className="day-title">Trocar senha</div>
+      <section className="settings-card"><h3><KeyRound />Trocar senha</h3>
       <form className="settings-form" onSubmit={(e) => void submitPassword(e)}>
-        <input type="password" placeholder="Nova senha" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
-        <input type="password" placeholder="Repita a nova senha" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+        <label>Nova senha<input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></label>
+        <label>Confirme a senha<input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></label>
         <button className="btn" type="submit">Alterar senha</button>
-        {pwMsg && <div className={pwMsg.ok ? "ok" : "error"}>{pwMsg.text}</div>}
-      </form>
+        {pwMsg && <Notice tone={pwMsg.ok ? "success" : "error"} role={pwMsg.ok ? "status" : "alert"}>{pwMsg.text}</Notice>}
+      </form></section>
 
 
-      <div className="day-title">Tags</div>
+      <section className="settings-card"><h3><Tag />Tags</h3>
       <div className="tag-row">
         {tags.length === 0 && <span className="empty">Crie tags ao editar uma tarefa.</span>}
         {tags.map((g) => (
           <span key={g.id} className="chip tag" style={{ ["--tag" as string]: g.color }}>
             {g.name}{" "}
             <button className="del" aria-label={`Excluir tag ${g.name}`}
-              onClick={() => window.confirm(`Excluir a tag "${g.name}"? Ela será removida das tarefas.`) && void removeTag(g.id)}>×</button>
+              onClick={async () => { if (await confirmAction({ title: `Excluir “${g.name}”?`, description: "A tag será removida das tarefas.", label: "Excluir tag", destructive: true })) void removeTag(g.id); }}><X /></button>
           </span>
         ))}
       </div>
 
+      </section>
       <Trash />
 
-      <div className="day-title">Backup e restauração</div>
+      <section className="settings-card"><h3>Backup e restauração</h3>
       <p className="empty">O arquivo JSON inclui os registros de trabalho da sua conta. A restauração adiciona registros e atualiza os de mesmo identificador. Convites, arquivos e histórico de aprovação ficam no espaço original.</p>
       <div className="settings-form">
-        <button className="btn" disabled={busy} onClick={() => void doExport()}>Baixar backup</button>
-        <button className="btn ghost" disabled={busy} onClick={() => fileRef.current?.click()}>Restaurar backup…</button>
+        <button className="btn" disabled={busy} onClick={() => void doExport()}><Download />Baixar backup</button>
+        <button className="btn outline" disabled={busy} onClick={() => fileRef.current?.click()}><Upload />Restaurar backup…</button>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => e.target.files?.[0] && void doImport(e.target.files[0])} />
-        {bkMsg && <div className={bkMsg.ok ? "ok" : "error"}>{bkMsg.text}</div>}
-      </div>
+        {bkMsg && <Notice tone={bkMsg.ok ? "success" : "error"} role={bkMsg.ok ? "status" : "alert"}>{bkMsg.text}</Notice>}
+      </div></section>
     </>
   );
 }
@@ -117,19 +122,19 @@ function Trash() {
 
   return (
     <details className="settings-trash">
-      <summary>Lixeira <span className="inbox-count">{entries.length}</span></summary>
+      <summary><Trash2 />Lixeira <span className="inbox-count">{entries.length}</span></summary>
       {entries.length ? entries.map((item) => {
         const project = "status" in item;
         const parent = project ? areas.find((area) => area.id === item.areaId) : undefined;
         return <div className="trash-row" key={item.id}>
           <div><strong>{item.name}</strong><small>{project ? `Projeto${parent ? ` · ${parent.name}` : ""}` : "Área"}</small></div>
-          <button className="btn ghost" aria-label={`Restaurar ${item.name}`} disabled={!!restoring} onClick={async () => {
+          <button className="btn outline" aria-label={`Restaurar ${item.name}`} disabled={!!restoring} onClick={async () => {
             setRestoring(item.id); setMessage("");
             try {
               const ok = project ? await updateProject(item.id, { deletedAt: null }) : await updateArea(item.id, { deletedAt: null });
               if (ok) setMessage(parent?.deletedAt ? `“${item.name}” foi restaurado. Restaure também “${parent.name}” para voltar a acessar o projeto.` : `“${item.name}” foi restaurado.`);
             } finally { setRestoring(null); }
-          }}>{restoring === item.id ? "Restaurando…" : "Restaurar"}</button>
+          }}><ArchiveRestore />{restoring === item.id ? "Restaurando…" : "Restaurar"}</button>
         </div>;
       }) : <p className="empty">Nenhuma área ou projeto na lixeira.</p>}
       {message && <p role="status">{message}</p>}

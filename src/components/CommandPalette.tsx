@@ -1,3 +1,5 @@
+import { CalendarDays, FileText, Folder, Inbox, ListTodo, Plus, Search, Settings, SunMoon } from "lucide-react";
+import { Dialog } from "./ui/Dialog.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GO_KEYS, type View } from "../lib/nav.ts";
 import { areaOf } from "../lib/workspaces.ts";
@@ -6,7 +8,7 @@ import { noteTitle } from "../lib/supabase/mappers.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
 
-interface Item { id: string; label: string; hint?: string; group: string; run: () => void }
+interface Item { id: string; label: string; hint?: string; group: string; run?: () => void }
 
 /** ⌘K / Ctrl+K abre a paleta; "g" + tecla navega (ignorado ao digitar em campos). */
 export function useShortcuts(go: (v: View) => void, enabled = true) {
@@ -54,6 +56,8 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
   const addTask = useDataStore((s) => s.addTask);
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const error = useDataStore((state) => state.error);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (open) { setQ(""); setIdx(0); } }, [open]);
@@ -81,7 +85,6 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
 
     const create: Item = {
       id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "⇧↵ · Entrada", group: "Ação",
-      run: done(() => void addTask({ title: q.trim() })),
     };
     const taskHits = rank(q, tasks.filter((t) => (t.status === "open" || t.status === "waiting") && visible(t)), (t) => t.title)
       .slice(0, 8)
@@ -97,19 +100,30 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
       }));
     // Criar fica por último: Enter navega para o melhor resultado; ⇧↵ cria.
     return [...rank(q, base, (i) => i.label), ...taskHits, ...noteHits, create];
-  }, [open, q, tasks, areas, projects, notes, go, close, openEditor, addTask, theme, toggleTheme]);
+  }, [open, q, tasks, areas, projects, notes, go, close, openEditor, theme, toggleTheme]);
 
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(".pal-item.on")?.scrollIntoView({ block: "nearest" });
   }, [idx]);
 
   if (!open) return null;
-  const cur = Math.min(idx, Math.max(items.length - 1, 0));
+  const cur = Math.max(0, Math.min(idx, items.length - 1));
+  const activeId = items[cur] ? `command-${items[cur].id}` : undefined;
+  const getIcon = (item: Item) => item.id === "create" ? Plus : item.id === "theme" ? SunMoon :
+    item.id === "nav-agenda" ? CalendarDays : item.id === "nav-inbox" ? Inbox : item.id === "nav-settings" ? Settings :
+    item.group === "Notas" ? FileText : item.group === "Tarefas" ? ListTodo : Folder;
+  const choose = async (item?: Item) => {
+    if (item?.id !== "create") { item?.run?.(); return; }
+    if (creating) return;
+    setCreating(true);
+    try { if (await addTask({ title: q.trim() })) close(); } finally { setCreating(false); }
+  };
 
   return (
-    <div className="modal-backdrop pal-backdrop" onMouseDown={close}>
-      <div className="pal" onMouseDown={(e) => e.stopPropagation()}>
-        <input
+    <Dialog title="Buscar no Cerne" className="command-dialog" onClose={close} closeButton={false}>
+      <div className="pal">
+        <div className="pal-search"><Search />
+        <input role="combobox" aria-label="Buscar no Cerne" aria-expanded="true" aria-controls="command-results" aria-activedescendant={activeId}
           autoFocus
           placeholder="Buscar tarefas, notas, áreas… ou digite para criar"
           value={q}
@@ -119,23 +133,23 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
             else if (e.key === "ArrowUp") { e.preventDefault(); setIdx(Math.max(cur - 1, 0)); }
             else if (e.key === "Enter") {
               e.preventDefault();
-              (e.shiftKey ? items.find((i) => i.id === "create") : items[cur])?.run();
+              void choose(e.shiftKey ? items.find((i) => i.id === "create") : items[cur]);
             }
-            else if (e.key === "Escape") close();
           }}
-        />
-        <div className="pal-list" ref={listRef}>
+        /></div>
+        {error && <p className="command-error error" role="alert">{error}</p>}
+        <div className="pal-list" id="command-results" role="listbox" aria-label="Resultados" ref={listRef}>
           {items.length === 0 && <div className="empty" style={{ padding: 12 }}>Nada encontrado.</div>}
-          {items.map((it, i) => (
-            <div key={it.id}>
-              {(i === 0 || items[i - 1].group !== it.group) && <div className="pal-group">{it.group}</div>}
-              <button className={`pal-item${i === cur ? " on" : ""}`} onMouseEnter={() => setIdx(i)} onClick={it.run}>
-                <span>{it.label}</span>{it.hint && <kbd>{it.hint}</kbd>}
+          {items.map((it, i) => { const Icon = getIcon(it); return (
+            <div key={it.id} role="presentation">
+              {(i === 0 || items[i - 1].group !== it.group) && <div className="pal-group" aria-hidden="true">{it.group}</div>}
+              <button id={`command-${it.id}`} role="option" aria-selected={i === cur} tabIndex={-1} className={`pal-item${i === cur ? " on" : ""}`} onMouseEnter={() => setIdx(i)} onClick={() => void choose(it)}>
+                <Icon /><span>{it.label}</span>{it.hint && <kbd>{it.hint}</kbd>}
               </button>
             </div>
-          ))}
+          ); })}
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

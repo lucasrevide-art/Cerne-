@@ -1,4 +1,6 @@
 import type { Task } from "../types.ts";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog } from "../components/ui/Dialog.tsx";
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_DURATION, END_HOUR, HOUR_PX, MIN_DURATION, SLOT, START_HOUR,
@@ -132,9 +134,9 @@ export function AgendaView({ tasks }: { tasks: Task[] }) {
     <>
       <div className="agenda-bar">
         <h2>{title}</h2>
-        <button className="btn ghost" onClick={() => setAnchor(addDays(anchor, -step))}>‹</button>
-        <button className="btn ghost" onClick={() => setAnchor(now)}>Hoje</button>
-        <button className="btn ghost" onClick={() => setAnchor(addDays(anchor, step))}>›</button>
+        <button className="btn outline icon" aria-label="Período anterior" onClick={() => setAnchor(addDays(anchor, -step))}><ChevronLeft /></button>
+        <button className="btn outline" onClick={() => setAnchor(now)}>Hoje</button>
+        <button className="btn outline icon" aria-label="Próximo período" onClick={() => setAnchor(addDays(anchor, step))}><ChevronRight /></button>
         <span style={{ flex: 1 }} />
         <div className="seg">
           <button className={mode === "day" ? "on" : ""} onClick={() => setMode("day")}>Dia</button>
@@ -237,17 +239,10 @@ function SlotPicker({ slot, tasks, onClose, onNew, onExisting }: {
   };
   const [title, setTitle] = useState("");
   const candidates = unscheduled(tasks);
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [onClose, busy]);
-
   return (
-    <div className="modal-backdrop" onMouseDown={() => { if (!busy) onClose(); }}>
+    <Dialog title="Agendar tarefa" onClose={() => { if (!busy) onClose(); }}>
       <form
-        className="modal"
-        onMouseDown={(e) => e.stopPropagation()}
+        className="stack"
         onSubmit={(e) => { e.preventDefault(); if (title.trim()) void save(() => onNew(title.trim())); }}
       >
         <strong>
@@ -267,7 +262,7 @@ function SlotPicker({ slot, tasks, onClose, onNew, onExisting }: {
           </>
         )}
       </form>
-    </div>
+    </Dialog>
   );
 }
 

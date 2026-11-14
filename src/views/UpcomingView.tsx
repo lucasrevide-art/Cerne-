@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
 import { DEFAULT_DURATION, END_HOUR, MIN_DURATION, SLOT, START_HOUR, toMinutes } from "../lib/agenda.ts";
 import { monthGrid, shiftMonth, tasksByDay } from "../lib/calendar.ts";
@@ -40,9 +41,9 @@ export function UpcomingView({ tasks }: { tasks: Task[] }) {
         <div className="month-header">
           <h3 aria-live="polite">{monthLabel}</h3>
           <div className="mode-row">
-            <button className="btn ghost" aria-label="Mês anterior" onClick={() => changeMonth(-1)}>‹</button>
-            <button className="btn ghost" onClick={() => { setMonth(now.slice(0, 8) + "01"); setSelected(now); }}>Hoje</button>
-            <button className="btn ghost" aria-label="Próximo mês" onClick={() => changeMonth(1)}>›</button>
+            <button className="btn outline icon" aria-label="Mês anterior" onClick={() => changeMonth(-1)}><ChevronLeft /></button>
+            <button className="btn outline" onClick={() => { setMonth(now.slice(0, 8) + "01"); setSelected(now); }}>Hoje</button>
+            <button className="btn outline icon" aria-label="Próximo mês" onClick={() => changeMonth(1)}><ChevronRight /></button>
           </div>
         </div>
         <div className="month">

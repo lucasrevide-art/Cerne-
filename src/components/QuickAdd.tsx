@@ -1,10 +1,10 @@
-import { useState } from "react";
-import plusIcon from "../assets/plus.svg";
+import { useState, type ReactNode } from "react";
+import { LoaderCircle, Plus } from "lucide-react";
 
 export function QuickAdd({ label, submit, button = "Adicionar", showIcon = false }: {
   label: string;
   submit: (name: string) => Promise<boolean>;
-  button?: string;
+  button?: ReactNode;
   showIcon?: boolean;
 }) {
   const [text, setText] = useState("");
@@ -19,7 +19,7 @@ export function QuickAdd({ label, submit, button = "Adicionar", showIcon = false
       } finally { setBusy(false); }
     }}>
       <input aria-label={label} placeholder={label} required disabled={busy} value={text} onChange={(e) => setText(e.target.value)} />
-      <button className="btn" disabled={busy || !text.trim()}>{showIcon && !busy && <img className="btn-icon" src={plusIcon} alt="" />}{busy ? "Salvando…" : button}</button>
+      <button className="btn" aria-label={typeof button === "string" ? undefined : label} disabled={busy || !text.trim()}>{busy ? <LoaderCircle className="spin" /> : showIcon && <Plus />}{busy ? "Salvando…" : button}</button>
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { LogIn, UserPlus } from "lucide-react";
+import { Notice } from "./Notice.tsx";
 import { useState } from "react";
 import { useAuthStore } from "../stores/authStore.ts";
 
@@ -30,12 +32,12 @@ export function AuthScreen({ invite }: { invite?: string }) {
     >
       <h1>Cerne</h1>
       {invite && <p>Entre ou crie uma conta com o e-mail do convite.</p>}
-      <input aria-label="E-mail" type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input aria-label="Senha" type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-      {error && <div className="error" role="alert">{error}</div>}
-      {message && <span role="status">{message}</span>}
-      <button className="btn" type="submit" disabled={busy}>{busy ? "Aguarde…" : "Entrar"}</button>
-      <button className="btn ghost" type="button" disabled={busy} onClick={(e) => { if (e.currentTarget.form?.reportValidity()) void submit(true); }}>Criar conta</button>
+      <label>E-mail<input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+      <label>Senha<input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></label>
+      {error && <Notice tone="error" role="alert">{error}</Notice>}
+      {message && <Notice tone="success" role="status">{message}</Notice>}
+      <button className="btn" type="submit" disabled={busy}>{busy ? "Aguarde…" : <><LogIn />Entrar</>}</button>
+      <button className="btn outline" type="button" disabled={busy} onClick={(e) => { if (e.currentTarget.form?.reportValidity()) void submit(true); }}><UserPlus />Criar conta</button>
     </form>
   );
 }

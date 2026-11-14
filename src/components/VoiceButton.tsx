@@ -1,3 +1,5 @@
+import { LoaderCircle, Mic, Square, X } from "lucide-react";
+import { Notice } from "./Notice.tsx";
 import { useEffect, useRef, useState } from "react";
 import { MAX_SECONDS, Recorder } from "../lib/recorder.ts";
 import { todayISO } from "../lib/lenses.ts";
@@ -79,16 +81,16 @@ export function VoiceButton() {
   return (
     <>
       <div className="voice">
-        {error && <div className="voice-error" onClick={() => setError(null)}>{error}</div>}
+        {error && <Notice tone="error" role="alert" action={<button className="btn ghost icon" aria-label="Fechar aviso" onClick={() => setError(null)}><X /></button>}>{error}</Notice>}
         <button
           className={`voice-btn ${phase}`}
           disabled={phase === "processing"}
           aria-label={phase === "recording" ? "Parar gravação" : "Criar tarefa por voz"}
           onClick={() => (phase === "recording" ? void finish() : void begin())}
         >
-          {phase === "idle" && "🎙"}
-          {phase === "recording" && <><span className="rec-dot" />{secs}s</>}
-          {phase === "processing" && "…"}
+          {phase === "idle" && <Mic />}
+          {phase === "recording" && <><Square />{secs}s</>}
+          {phase === "processing" && <LoaderCircle className="spin" />}
         </button>
       </div>
       {draft && <VoiceReview draft={draft} onClose={() => setDraft(null)} />}
