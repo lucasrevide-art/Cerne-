@@ -6,6 +6,8 @@ import type { SimpleView, View } from "./lib/nav.ts";
 import { AuthScreen } from "./components/AuthScreen.tsx";
 import { AgendaView } from "./views/AgendaView.tsx";
 import { BoardView } from "./views/BoardView.tsx";
+import { BoardScreen } from "./views/BoardScreen.tsx";
+import { useUiStore } from "./stores/uiStore.ts";
 import { TaskEditor } from "./components/TaskEditor.tsx";
 import { UpcomingView } from "./views/UpcomingView.tsx";
 import { NotesSection } from "./views/NotesSection.tsx";
@@ -29,7 +31,9 @@ export function App() {
   const addProject = useDataStore((s) => s.addProject);
   const [view, setView] = useState<View>({ kind: "today" });
   const [newArea, setNewArea] = useState("");
-  const [projectMode, setProjectMode] = useState<"list" | "board">("list");
+  const [mode, setMode] = useState<"list" | "board">("board");
+  const theme = useUiStore((s) => s.theme);
+  const toggleTheme = useUiStore((s) => s.toggleTheme);
 
   useShortcuts(setView);
   useEffect(() => init(), [init]);
@@ -55,6 +59,15 @@ export function App() {
     </button>
   );
 
+  const modeToggle = (
+    <div className="seg view-toggle">
+      <button className={mode === "board" ? "on" : ""} onClick={() => setMode("board")}>Quadro</button>
+      <button className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>Lista</button>
+    </div>
+  );
+  const wide = view.kind === "agenda" || view.kind === "board"
+    || ((view.kind === "project" || view.kind === "area") && mode === "board");
+
   let content;
   switch (view.kind) {
     case "inbox":
@@ -68,6 +81,9 @@ export function App() {
       break;
     case "waiting":
       content = <TaskListView title="Aguardando" tasks={lists.waiting} />;
+      break;
+    case "board":
+      content = <BoardScreen />;
       break;
     case "settings":
       content = <SettingsView />;
@@ -86,7 +102,10 @@ export function App() {
       const own = tasks.filter((t) => t.areaId === view.id && !t.projectId && t.status === "open");
       content = (
         <>
-          <TaskListView title={area?.name ?? "Área"} tasks={own} defaults={{ areaId: view.id }} />
+          {modeToggle}
+          {mode === "list"
+            ? <TaskListView title={area?.name ?? "Área"} tasks={own} defaults={{ areaId: view.id }} />
+            : <><h2>{area?.name ?? "Área"}</h2><BoardView scope={{ kind: "area", id: view.id }} /></>}
           <NotesSection areaId={view.id} key={view.id} />
           <div className="day-title">Projetos</div>
           {projects.filter((p) => p.areaId === view.id).map((p) => (
@@ -110,13 +129,10 @@ export function App() {
       const own = tasks.filter((t) => t.projectId === view.id && t.status === "open");
       content = (
         <>
-          <div className="seg view-toggle">
-            <button className={projectMode === "list" ? "on" : ""} onClick={() => setProjectMode("list")}>Lista</button>
-            <button className={projectMode === "board" ? "on" : ""} onClick={() => setProjectMode("board")}>Quadro</button>
-          </div>
-          {projectMode === "list"
+          {modeToggle}
+          {mode === "list"
             ? <TaskListView title={p?.name ?? "Projeto"} tasks={own} defaults={{ projectId: view.id, areaId: p?.areaId ?? null }} />
-            : <><h2>{p?.name ?? "Projeto"}</h2><BoardView projectId={view.id} areaId={p?.areaId ?? null} /></>}
+            : <><h2>{p?.name ?? "Projeto"}</h2><BoardView scope={{ kind: "project", id: view.id }} /></>}
         </>
       );
       break;
@@ -129,6 +145,7 @@ export function App() {
         <h1>Cerne</h1>
         {nav("inbox", "Inbox", lists.inbox.length)}
         {nav("today", "Hoje", lists.today.length)}
+        {nav("board", "Quadro")}
         {nav("focus", "A Única Coisa", lists.focus.length)}
         {nav("waiting", "Aguardando", lists.waiting.length)}
         {nav("upcoming", "Próximas")}
@@ -142,10 +159,11 @@ export function App() {
           <input placeholder="Nova área…" value={newArea} onChange={(e) => setNewArea(e.target.value)} />
         </form>
         <div className="spacer" />
+        <button className="nav-item" onClick={toggleTheme}>{theme === "dark" ? "☀ Tema claro" : "☾ Tema escuro"}</button>
         {nav("settings", "Configurações")}
         <button className="nav-item" onClick={() => void signOut()}>Sair</button>
       </aside>
-      <main className={`main${view.kind === "agenda" || (view.kind === "project" && projectMode === "board") ? " wide" : ""}`}>
+      <main className={`main${wide ? " wide" : ""}`}>
         {error && <div className="banner error">{error}</div>}
         {content}
       </main>

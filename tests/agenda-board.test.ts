@@ -92,3 +92,31 @@ test("tasksByDay junta data e prazo sem duplicar", () => {
   assert.equal(m.get("2026-06-10")!.length, 1);
   assert.equal(m.get("2026-06-12")!.length, 1);
 });
+
+import { boardTasks } from "../src/lib/board.ts";
+import { otherTheme, resolveTheme } from "../src/lib/theme.ts";
+
+test("quadro por escopo: projeto, área e tudo", () => {
+  const now = new Date("2026-06-20T12:00:00Z");
+  const ts = [
+    mk({ id: "a", projectId: "p1", areaId: "a1" }),
+    mk({ id: "b", areaId: "a1" }),
+    mk({ id: "c" }),
+    mk({ id: "d", status: "canceled" }),
+    mk({ id: "velha", status: "completed", completedAt: "2026-05-01T12:00:00Z" }),
+    mk({ id: "nova", status: "completed", completedAt: "2026-06-19T12:00:00Z" }),
+    mk({ id: "velhaProj", projectId: "p1", status: "completed", completedAt: "2026-01-01T12:00:00Z" }),
+  ];
+  const ids = (s: Parameters<typeof boardTasks>[1]) => boardTasks(ts, s, now).map((t) => t.id);
+  assert.deepEqual(ids({ kind: "project", id: "p1" }), ["a", "velhaProj"]);
+  assert.deepEqual(ids({ kind: "area", id: "a1" }), ["a", "b"]);
+  assert.deepEqual(ids({ kind: "all" }), ["a", "b", "c", "nova"]);
+});
+
+test("tema: escolha salva vence o sistema", () => {
+  assert.equal(resolveTheme("dark", false), "dark");
+  assert.equal(resolveTheme("light", true), "light");
+  assert.equal(resolveTheme(null, true), "dark");
+  assert.equal(resolveTheme("lixo", false), "light");
+  assert.equal(otherTheme("dark"), "light");
+});

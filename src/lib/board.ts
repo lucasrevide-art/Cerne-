@@ -40,3 +40,23 @@ export const dropOrder = (column: Task[], beforeId: string | null, movingId: str
   if (i < 0) return list[list.length - 1].sortOrder + 1;
   return i === 0 ? list[0].sortOrder - 1 : (list[i - 1].sortOrder + list[i].sortOrder) / 2;
 };
+
+export type BoardScope = { kind: "all" } | { kind: "area"; id: string } | { kind: "project"; id: string };
+
+/** Dias em que um cartão concluído continua visível nos quadros amplos (tudo/área). */
+export const DONE_WINDOW_DAYS = 14;
+
+/**
+ * Tarefas de um quadro. No quadro de projeto mostra todas as concluídas; nos quadros
+ * amplos só as concluídas recentemente, para a coluna Concluído não crescer sem fim.
+ */
+export function boardTasks(tasks: Task[], scope: BoardScope, now: Date = new Date()): Task[] {
+  const cutoff = now.getTime() - DONE_WINDOW_DAYS * 86_400_000;
+  return tasks.filter((t) => {
+    if (t.status === "canceled") return false;
+    if (scope.kind === "project") return t.projectId === scope.id;
+    if (scope.kind === "area" && t.areaId !== scope.id) return false;
+    if (t.status !== "completed") return true;
+    return t.completedAt !== null && new Date(t.completedAt).getTime() >= cutoff;
+  });
+}

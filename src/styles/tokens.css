@@ -11,6 +11,13 @@
   --color-border: #e4e4de;
   --color-danger: #b4423a;
   --color-focus: #c98a1a;
+  --color-on-accent: #ffffff;
+  --color-warn-bg: #fff4e0;
+  --color-warn-border: #f0d9a8;
+  --color-today-bg: #f6faf9;
+  --color-break: #5b7c99;
+  --color-backdrop: rgb(29 36 34 / 35%);
+  color-scheme: light;
 
   /* espaçamento */
   --space-1: 4px;
@@ -38,4 +45,28 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
   --dur: 200ms;
+}
+
+/* Tema escuro: mesmos tokens, outros valores. Ativado por data-theme no <html>. */
+:root[data-theme="dark"] {
+  --color-accent: #5fb3a5;
+  --color-accent-strong: #8fd0c4;
+  --color-accent-soft: #1f3531;
+  --color-bg: #121615;
+  --color-surface: #1b211f;
+  --color-sidebar: #171c1a;
+  --color-text: #e7ecea;
+  --color-text-muted: #94a19c;
+  --color-border: #2d3633;
+  --color-danger: #e58a80;
+  --color-focus: #e3ad45;
+  --color-on-accent: #0e1513;
+  --color-warn-bg: #3a2f18;
+  --color-warn-border: #5e4b22;
+  --color-today-bg: #18221f;
+  --color-break: #86a9c9;
+  --color-backdrop: rgb(0 0 0 / 60%);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 50%);
+  color-scheme: dark;
 }

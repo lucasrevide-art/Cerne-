@@ -43,6 +43,8 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
   const open = useUiStore((s) => s.paletteOpen);
   const close = useUiStore((s) => s.closePalette);
   const openEditor = useUiStore((s) => s.openEditor);
+  const theme = useUiStore((s) => s.theme);
+  const toggleTheme = useUiStore((s) => s.toggleTheme);
   const tasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
@@ -64,7 +66,10 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
       ...areas.map((a) => ({ id: "a" + a.id, label: a.name, hint: "Área", group: "Ir para", run: done(() => go({ kind: "area", id: a.id })) })),
       ...projects.map((p) => ({ id: "p" + p.id, label: p.name, hint: "Projeto", group: "Ir para", run: done(() => go({ kind: "project", id: p.id })) })),
     ];
-    const base = [...nav, ...places];
+    const themeItem: Item = {
+      id: "theme", label: theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro", group: "Ação", run: done(toggleTheme),
+    };
+    const base = [...nav, ...places, themeItem];
     if (!q.trim()) return base;
 
     const create: Item = {
@@ -82,7 +87,7 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
       }));
     // Criar fica por último: Enter navega para o melhor resultado; ⇧↵ cria.
     return [...rank(q, base, (i) => i.label), ...taskHits, ...noteHits, create];
-  }, [open, q, tasks, areas, projects, notes, go, close, openEditor, addTask]);
+  }, [open, q, tasks, areas, projects, notes, go, close, openEditor, addTask, theme, toggleTheme]);
 
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(".pal-item.on")?.scrollIntoView({ block: "nearest" });
