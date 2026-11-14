@@ -112,3 +112,24 @@ input:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0
 .note-card small { margin-top: auto; color: var(--color-text-muted); }
 .note-card.new { align-items: center; justify-content: center; color: var(--color-accent); background: none; border-style: dashed; }
 .note-body { width: 100%; min-height: 60vh; resize: vertical; line-height: 1.5; }
+
+/* pomodoro */
+.pomo { position: fixed; right: var(--space-4); bottom: var(--space-4); display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); z-index: 40; }
+.pomo-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.pomo-pill { display: flex; background: var(--color-accent); color: #fff; border-radius: 999px; box-shadow: var(--shadow-md); overflow: hidden; transition: background var(--dur) var(--ease); }
+.pomo-pill.break { background: #5b7c99; }
+.pomo-pill button { background: none; border: 0; color: inherit; padding: var(--space-2) var(--space-3); }
+.pomo-main { display: flex; gap: var(--space-2); align-items: center; padding-left: var(--space-4) !important; }
+.pomo-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.pomo-more { border-left: 1px solid rgb(255 255 255 / 25%) !important; }
+
+/* paleta */
+.pal-backdrop { place-items: start center; padding-top: 14vh; }
+.pal { background: var(--color-surface); width: min(560px, 92vw); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+.pal > input { width: 100%; border: 0; border-bottom: 1px solid var(--color-border); border-radius: 0; padding: var(--space-4); font-size: var(--text-md); }
+.pal > input:focus { box-shadow: none; }
+.pal-list { max-height: 50vh; overflow-y: auto; padding: var(--space-2); }
+.pal-group { font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding: var(--space-2) var(--space-3) var(--space-1); }
+.pal-item { display: flex; width: 100%; justify-content: space-between; align-items: center; background: none; border: 0; text-align: left; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); }
+.pal-item.on { background: var(--color-accent-soft); color: var(--color-accent-strong); }
+.pal-item kbd { font-family: inherit; font-size: 12px; color: var(--color-text-muted); }

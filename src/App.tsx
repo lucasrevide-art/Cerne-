@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
+import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
+import type { SimpleView, View } from "./lib/nav.ts";
 import { AuthScreen } from "./components/AuthScreen.tsx";
 import { AgendaView } from "./views/AgendaView.tsx";
 import { BoardView } from "./views/BoardView.tsx";
@@ -11,11 +14,6 @@ import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
 import { isConfigured } from "./lib/supabase/client.ts";
 import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
-
-type View =
-  | { kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming" }
-  | { kind: "area"; id: string }
-  | { kind: "project"; id: string };
 
 export function App() {
   const { session, ready, init, signOut } = useAuthStore();
@@ -31,6 +29,7 @@ export function App() {
   const [newArea, setNewArea] = useState("");
   const [projectMode, setProjectMode] = useState<"list" | "board">("list");
 
+  useShortcuts(setView);
   useEffect(() => init(), [init]);
   useEffect(() => {
     if (!session) return;
@@ -46,7 +45,7 @@ export function App() {
 
   const now = todayISO();
   const lists = { inbox: inbox(tasks), today: today(tasks, now), focus: focus(tasks), waiting: waiting(tasks) };
-  const nav = (kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming", label: string, count?: number) => (
+  const nav = (kind: SimpleView, label: string, count?: number) => (
     <button className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => setView({ kind })}>
       <span>{label}</span>{count ? <span className="count">{count}</span> : null}
     </button>
@@ -143,6 +142,8 @@ export function App() {
         {content}
       </main>
       <TaskEditor />
+      <PomodoroWidget />
+      <CommandPalette go={setView} />
     </div>
   );
 }
