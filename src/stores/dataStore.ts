@@ -33,6 +33,7 @@ interface DataState {
   addProject: (name: string, areaId: string | null) => Promise<void>;
   addNote: (areaId: string | null) => Promise<Note>;
   updateNote: (id: string, body: string) => Promise<void>;
+  removeNote: (id: string) => Promise<void>;
 }
 
 const guard = async (set: (p: Partial<DataState>) => void, fn: () => Promise<void>) => {
@@ -122,5 +123,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     const updatedAt = new Date().toISOString();
     set({ notes: get().notes.map((n) => (n.id === id ? { ...n, body, updatedAt } : n)) });
     await noteRepository.updateBody(id, body);
+  }),
+
+  removeNote: (id) => guard(set, async () => {
+    set({ notes: get().notes.filter((n) => n.id !== id) });
+    await noteRepository.remove(id);
   }),
 }));

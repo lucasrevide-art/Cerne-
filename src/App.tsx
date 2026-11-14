@@ -3,6 +3,8 @@ import { AuthScreen } from "./components/AuthScreen.tsx";
 import { AgendaView } from "./views/AgendaView.tsx";
 import { BoardView } from "./views/BoardView.tsx";
 import { TaskEditor } from "./components/TaskEditor.tsx";
+import { UpcomingView } from "./views/UpcomingView.tsx";
+import { NotesSection } from "./views/NotesSection.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
 import { TaskListView } from "./views/TaskListView.tsx";
 import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
@@ -11,7 +13,7 @@ import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
 
 type View =
-  | { kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" }
+  | { kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming" }
   | { kind: "area"; id: string }
   | { kind: "project"; id: string };
 
@@ -44,7 +46,7 @@ export function App() {
 
   const now = todayISO();
   const lists = { inbox: inbox(tasks), today: today(tasks, now), focus: focus(tasks), waiting: waiting(tasks) };
-  const nav = (kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda", label: string, count?: number) => (
+  const nav = (kind: "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming", label: string, count?: number) => (
     <button className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => setView({ kind })}>
       <span>{label}</span>{count ? <span className="count">{count}</span> : null}
     </button>
@@ -64,6 +66,9 @@ export function App() {
     case "waiting":
       content = <TaskListView title="Aguardando" tasks={lists.waiting} />;
       break;
+    case "upcoming":
+      content = <UpcomingView />;
+      break;
     case "agenda":
       content = <AgendaView />;
       break;
@@ -76,6 +81,7 @@ export function App() {
       content = (
         <>
           <TaskListView title={area?.name ?? "Área"} tasks={own} defaults={{ areaId: view.id }} />
+          <NotesSection areaId={view.id} key={view.id} />
           <div className="day-title">Projetos</div>
           {projects.filter((p) => p.areaId === view.id).map((p) => (
             <button key={p.id} className="nav-item" onClick={() => setView({ kind: "project", id: p.id })}>{p.name}</button>
@@ -119,6 +125,7 @@ export function App() {
         {nav("today", "Hoje", lists.today.length)}
         {nav("focus", "A Única Coisa", lists.focus.length)}
         {nav("waiting", "Aguardando", lists.waiting.length)}
+        {nav("upcoming", "Próximas")}
         {nav("agenda", "Agenda")}
         {nav("completed", "Concluídas")}
         <div className="group-title">Áreas</div>

@@ -68,3 +68,27 @@ test("dropOrder insere entre vizinhos", () => {
   assert.equal(dropOrder(col, "a", "x"), -1);
   assert.equal(dropOrder(col, null, "x"), 3);
 });
+
+import { monthGrid, shiftMonth, tasksByDay } from "../src/lib/calendar.ts";
+
+test("grade mensal tem 42 dias e começa no domingo", () => {
+  const g = monthGrid("2026-06-15");
+  assert.equal(g.length, 42);
+  assert.equal(g[0], "2026-05-31");
+  assert.ok(g.includes("2026-06-30"));
+});
+
+test("shiftMonth vira o ano", () => {
+  assert.equal(shiftMonth("2026-12-10", 1), "2027-01-01");
+  assert.equal(shiftMonth("2026-01-10", -1), "2025-12-01");
+});
+
+test("tasksByDay junta data e prazo sem duplicar", () => {
+  const m = tasksByDay([
+    mk({ id: "a", when: "date", whenDate: "2026-06-10", deadline: "2026-06-10" }),
+    mk({ id: "b", deadline: "2026-06-12" }),
+    mk({ id: "c", whenDate: "2026-06-10", status: "completed" }),
+  ]);
+  assert.equal(m.get("2026-06-10")!.length, 1);
+  assert.equal(m.get("2026-06-12")!.length, 1);
+});
