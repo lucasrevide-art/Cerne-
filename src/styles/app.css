@@ -324,3 +324,82 @@ button:disabled { opacity: .55; cursor: default; }
   .modal { max-height: 92dvh; }
   .agenda-week, .calendar-week { min-width: 0; }
 }
+
+/* Entrada, agenda mensal e lixeira */
+.main.inbox-main { max-width: 1190px; }
+.inbox-page { display: grid; gap: var(--space-4); }
+.inbox-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); }
+.inbox-head time { color: var(--color-text-muted); font-size: var(--text-sm); }
+.inbox-head h2 { margin: var(--space-1) 0 0; font-size: clamp(29px, 4vw, 38px); letter-spacing: -.025em; }
+.inbox-page > .quick-add { margin: 0 0 var(--space-1); }
+.inbox-page > .quick-add > input { min-height: 44px; }
+.inbox-timeline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.inbox-section, .month-calendar, .month-day, .settings-trash {
+  min-width: 0; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.inbox-section > header, .inbox-details > summary, .settings-trash > summary {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+}
+.inbox-section h3 { margin: 0; font-size: 16px; }
+.inbox-section > .empty, .settings-trash > p { margin: 0; padding: 0 var(--space-4) var(--space-4); }
+.inbox-count { color: var(--color-accent-strong); background: var(--color-accent-soft); border-radius: 100px; min-width: 24px; padding: 3px 7px; text-align: center; font-size: var(--text-sm); }
+.inbox-overdue > header { color: var(--color-danger); }
+.inbox-overdue .inbox-count { background: var(--color-warn-bg); color: var(--color-danger); }
+.inbox-details > summary, .settings-trash > summary { cursor: pointer; font-weight: 600; }
+.inbox-details > summary::before, .settings-trash > summary::before { content: "›"; color: var(--color-text-muted); }
+.inbox-details[open] > summary::before, .settings-trash[open] > summary::before { transform: rotate(90deg); }
+.inbox-details .inbox-count, .settings-trash .inbox-count { margin-left: auto; }
+.task-identity { flex: 1; min-width: 0; }
+.task-brief { flex: 1; min-width: 0; display: grid; gap: var(--space-1); }
+.task-brief .task-title { min-width: 0; font-weight: 600; }
+.task-brief-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); overflow-wrap: anywhere; }
+.task-brief-meta span + span { border-left: 1px solid var(--color-border); padding-left: var(--space-2); }
+.task-brief-meta .task-brief-priority { color: var(--color-danger); }
+.task-summary { padding: var(--space-3) var(--space-4); border-bottom: 0; border-top: 1px solid var(--color-border); gap: var(--space-2); }
+.task-summary .star:not(.on) { color: var(--color-text-muted); }
+.task-summary .star { padding-inline: var(--space-1); min-height: 32px; }
+.task-summary .btn.small { font-size: var(--text-sm); }
+.agenda-header { align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); }
+.agenda-header h2, .agenda-header .view-toggle { margin: 0; }
+.month-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(248px, 300px); gap: var(--space-4); align-items: start; }
+.month-calendar, .month-day { padding: var(--space-4); }
+.month-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.month-header h3, .month-day h3 { margin: 0; font-size: 16px; }
+.month-header h3::first-letter, .month-day h3::first-letter { text-transform: uppercase; }
+.month .month-cell { min-width: 0; min-height: 74px; max-height: 125px; aspect-ratio: 1.12; }
+.month-cell:hover, .month-cell.sel { background: var(--color-today-bg); }
+.month-cell.out { opacity: 1; color: var(--color-text-muted); background: var(--color-bg); }
+.month-cell.sel { border-color: var(--color-accent); color: var(--color-accent-strong); }
+.month-date { font-size: var(--text-sm); padding: 2px 4px; }
+.month-cell.today .month-date { border-radius: var(--radius-sm); background: var(--color-accent-soft); }
+.month-items { display: grid; gap: 2px; width: 100%; text-align: left; color: var(--color-accent-strong); font-size: 12px; }
+.month-item-title { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 4px; border-radius: var(--radius-sm); background: var(--color-accent-soft); }
+.month-item-count:empty, .month-mobile-count { display: none; }
+.month-day { scroll-margin-top: 75px; }
+.day-form { margin-top: var(--space-4); }
+.day-form .form-grid { margin-top: var(--space-2); }
+.day-form .form-grid input { width: 100%; min-width: 0; }
+.day-options summary { color: var(--color-accent-strong); padding-block: var(--space-1); cursor: pointer; }
+.month-day-items { margin-top: var(--space-3); }
+.month-day-items .task-summary { padding-inline: 0; }
+.settings-trash { margin-block: var(--space-5); }
+.trash-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) var(--space-4); gap: var(--space-3); border-top: 1px solid var(--color-border); }
+.trash-row strong { overflow-wrap: anywhere; }
+.trash-row small { display: block; margin-top: var(--space-1); color: var(--color-text-muted); }
+
+@media (max-width: 970px) {
+  .month-layout, .inbox-timeline { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .inbox-head { align-items: center; }
+  .inbox-head .btn { padding-inline: var(--space-2); white-space: nowrap; font-size: var(--text-sm); }
+  .inbox-page > .quick-add .btn { max-width: 110px; padding-inline: var(--space-2); }
+  .task-summary { flex-wrap: nowrap; }
+  .task-summary .star { min-width: 32px; min-height: 40px; }
+  .month-calendar, .month-day { padding: var(--space-3); }
+  .month-header .btn { padding-inline: var(--space-2); min-width: 38px; }
+  .month .month-cell { aspect-ratio: auto; min-height: 48px; padding: 3px; }
+  .month-item-title, .month-item-count { display: none; }
+  .month-mobile-count { display: block; text-align: right; padding-right: 2px; }
+}

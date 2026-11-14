@@ -1,3 +1,4 @@
+import type { Task } from "../types.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_DURATION, END_HOUR, HOUR_PX, MIN_DURATION, SLOT, START_HOUR,
@@ -22,10 +23,10 @@ const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_
 const label = (iso: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", opts);
 
-export function AgendaView() {
-  const tasks = useDataStore((s) => s.tasks);
+export function AgendaView({ tasks }: { tasks: Task[] }) {
   const addTask = useDataStore((s) => s.addTask);
   const updateTask = useDataStore((s) => s.updateTask);
+  const scoped = useDataStore((s) => s.scoped);
   const openEditor = useUiStore((s) => s.openEditor);
 
   const [mode, setMode] = useState<"week" | "day">("week");
@@ -210,14 +211,13 @@ export function AgendaView() {
       {slot && (
         <SlotPicker
           slot={slot}
+          tasks={tasks}
           onClose={() => setSlot(null)}
           onNew={async (title) => {
-            await addTask({ title, when: "date", whenDate: slot.day, startTime: fromMinutes(slot.start), durationMinutes: slot.duration });
-            setSlot(null);
+            return addTask({ title, when: "date", whenDate: slot.day, startTime: fromMinutes(slot.start), durationMinutes: slot.duration });
           }}
           onExisting={async (id) => {
-            await updateTask(id, { when: "date", whenDate: slot.day, startTime: fromMinutes(slot.start), durationMinutes: slot.duration });
-            setSlot(null);
+            return updateTask(id, { when: "date", whenDate: slot.day, startTime: fromMinutes(slot.start), durationMinutes: slot.duration, ...(scoped ? { inbox: false } : {}) });
           }}
         />
       )}
@@ -225,36 +225,43 @@ export function AgendaView() {
   );
 }
 
-function SlotPicker({ slot, onClose, onNew, onExisting }: {
-  slot: Slot; onClose: () => void; onNew: (title: string) => void; onExisting: (id: string) => void;
+function SlotPicker({ slot, tasks, onClose, onNew, onExisting }: {
+  slot: Slot; tasks: Task[]; onClose: () => void; onNew: (title: string) => Promise<boolean>; onExisting: (id: string) => Promise<boolean>;
 }) {
-  const tasks = useDataStore((s) => s.tasks);
+  const error = useDataStore((s) => s.error);
+  const [busy, setBusy] = useState(false);
+  const save = async (action: () => Promise<boolean>) => {
+    if (busy) return;
+    setBusy(true);
+    try { if (await action()) onClose(); } finally { setBusy(false); }
+  };
   const [title, setTitle] = useState("");
   const candidates = unscheduled(tasks);
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const k = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [onClose]);
+  }, [onClose, busy]);
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="modal-backdrop" onMouseDown={() => { if (!busy) onClose(); }}>
       <form
         className="modal"
         onMouseDown={(e) => e.stopPropagation()}
-        onSubmit={(e) => { e.preventDefault(); if (title.trim()) onNew(title.trim()); }}
+        onSubmit={(e) => { e.preventDefault(); if (title.trim()) void save(() => onNew(title.trim())); }}
       >
         <strong>
           {label(slot.day, { weekday: "long", day: "numeric", month: "long" })} · {fromMinutes(slot.start)}–{fromMinutes(slot.start + slot.duration)}
         </strong>
         <input autoFocus placeholder="Nova tarefa neste horário…" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <button className="btn" type="submit" disabled={!title.trim()}>Criar</button>
+        <button className="btn" type="submit" disabled={busy || !title.trim()}>{busy ? "Salvando…" : "Criar"}</button>
+        {error && <p role="alert" className="error">{error}</p>}
         {candidates.length > 0 && (
           <>
             <div className="day-title">…ou use uma tarefa existente</div>
             <div className="pick-list">
               {candidates.map((t) => (
-                <button type="button" key={t.id} onClick={() => onExisting(t.id)}>{t.title}</button>
+                <button type="button" key={t.id} disabled={busy} onClick={() => void save(() => onExisting(t.id))}>{t.title}</button>
               ))}
             </div>
           </>

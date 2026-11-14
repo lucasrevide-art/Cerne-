@@ -30,12 +30,10 @@ export function GroupList({ groups, go, kind }: { groups: (Area | Project)[]; go
   );
   const active = groups.filter((g) => !g.deletedAt && !archived(g));
   const archive = groups.filter((g) => !g.deletedAt && archived(g));
-  const deleted = groups.filter((g) => g.deletedAt);
   return (
     <>
       {active.length ? <div className="project-grid">{active.map(render)}</div> : <p className="empty">Nenhum {kind === "area" ? "espaço ativo" : "projeto ativo"}.</p>}
       {!!archive.length && <details className="group-history"><summary>Arquivados ({archive.length})</summary><div className="project-grid">{archive.map(render)}</div></details>}
-      {!!deleted.length && <details className="group-history"><summary>Lixeira ({deleted.length})</summary><div className="project-grid">{deleted.map(render)}</div></details>}
     </>
   );
 }
@@ -45,7 +43,7 @@ export function AreasView({ go }: { go: Props["go"] }) {
   const projects = useDataStore((s) => s.projects);
   const addArea = useDataStore((s) => s.addArea);
   const [creating, setCreating] = useState(false);
-  const legacy = projects.filter((p) => !p.areaId);
+  const legacy = projects.filter((p) => !p.areaId && !p.deletedAt);
   return (
     <>
       <header className="page-head"><h2>Áreas</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : "Nova área"}</button></header>
@@ -86,7 +84,11 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
   }, [tab, portal, areaId, area, tasks]);
 
   if (!group) return <p className="empty">Este espaço está indisponível.</p>;
-  const inactive = group.deletedAt || archived(group) || area?.deletedAt || (area && archived(area));
+  if (group.deletedAt || area?.deletedAt) return <div className="stack">
+    <p className="empty">Este espaço está na lixeira.</p>
+    <div><button className="btn ghost" onClick={() => go({ kind: "settings" })}>Abrir Conta e dados</button></div>
+  </div>;
+  const inactive = archived(group) || (area && archived(area));
   const areaProjects = projects.filter((p) => p.areaId === id);
   const inScope = tasks.filter((t) => kind === "project" ? t.projectId === id :
     areaOf(t, projects) === id && (!t.projectId || areaProjects.some((p) => p.id === t.projectId && !p.deletedAt && !archived(p))));
@@ -110,7 +112,7 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
         <div><h2>{group.name}</h2>{(project?.notes || area?.description && !project) && <p className="workspace-description">{project ? project.notes : area?.description}</p>}</div>
         <WorkspaceActions group={group} onPreview={!project ? () => go({ kind: "portal", id, preview: true }) : undefined} />
       </header>
-      {inactive && <p className="banner">{group.deletedAt || area?.deletedAt ? "Na lixeira" : "Arquivado"}. Restaure o espaço para voltar a trabalhar nele.</p>}
+      {inactive && <p className="banner">Arquivado. Restaure o espaço para voltar a trabalhar nele.</p>}
       <div className="workspace-tabs" aria-label="Seções do espaço">
         {(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "notes"] as const)).map((key) => (
           <button key={key} aria-pressed={tab === key} onClick={() => setTab(key)}>{labels[key]}</button>

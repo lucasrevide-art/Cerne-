@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GO_KEYS, type View } from "../lib/nav.ts";
+import { areaOf } from "../lib/workspaces.ts";
 import { rank } from "../lib/search.ts";
 import { noteTitle } from "../lib/supabase/mappers.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -63,9 +64,14 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
     const nav: Item[] = Object.entries(GO_KEYS).map(([k, v]) => ({
       id: "nav-" + v.view, label: v.label, hint: `g ${k}`, group: "Ir para", run: done(() => go({ kind: v.view })),
     }));
+    const trashedAreas = new Set(areas.filter((area) => area.deletedAt).map((area) => area.id));
+    const trashedProjects = new Set(projects.filter((project) => project.deletedAt || trashedAreas.has(project.areaId ?? "")).map((project) => project.id));
+    const visible = (item: { areaId: string | null; projectId?: string | null }) =>
+      !trashedAreas.has(areaOf({ areaId: item.areaId, projectId: item.projectId ?? null }, projects) ?? "") &&
+      !trashedProjects.has(item.projectId ?? "");
     const places: Item[] = [
-      ...areas.map((a) => ({ id: "a" + a.id, label: a.name, hint: "Área", group: "Ir para", run: done(() => go({ kind: "area", id: a.id })) })),
-      ...projects.map((p) => ({ id: "p" + p.id, label: `${areas.find((a) => a.id === p.areaId)?.name ?? "Sem área"} › ${p.name}`, hint: "Projeto", group: "Ir para", run: done(() => go({ kind: "project", id: p.id })) })),
+      ...areas.filter((a) => !trashedAreas.has(a.id)).map((a) => ({ id: "a" + a.id, label: a.name, hint: "Área", group: "Ir para", run: done(() => go({ kind: "area", id: a.id })) })),
+      ...projects.filter((p) => !trashedProjects.has(p.id)).map((p) => ({ id: "p" + p.id, label: `${areas.find((a) => a.id === p.areaId)?.name ?? "Sem área"} › ${p.name}`, hint: "Projeto", group: "Ir para", run: done(() => go({ kind: "project", id: p.id })) })),
     ];
     const themeItem: Item = {
       id: "theme", label: theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro", group: "Ação", run: done(toggleTheme),
@@ -77,10 +83,10 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
       id: "create", label: `Criar tarefa: “${q.trim()}”`, hint: "⇧↵ · Entrada", group: "Ação",
       run: done(() => void addTask({ title: q.trim() })),
     };
-    const taskHits = rank(q, tasks.filter((t) => t.status === "open" || t.status === "waiting"), (t) => t.title)
+    const taskHits = rank(q, tasks.filter((t) => (t.status === "open" || t.status === "waiting") && visible(t)), (t) => t.title)
       .slice(0, 8)
       .map((t) => ({ id: "t" + t.id, label: t.title, hint: "Tarefa", group: "Tarefas", run: done(() => openEditor(t.id)) }));
-    const noteHits = rank(q, notes, (n) => `${n.title ?? ""} ${n.body}`)
+    const noteHits = rank(q, notes.filter(visible), (n) => `${n.title ?? ""} ${n.body}`)
       .slice(0, 5)
       .map((n) => ({
         id: "n" + n.id, label: n.title || noteTitle(n.body), hint: "Nota", group: "Notas",

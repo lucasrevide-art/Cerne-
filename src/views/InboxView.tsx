@@ -1,35 +1,69 @@
 import { QuickAdd } from "../components/QuickAdd.tsx";
 import { TaskRow } from "../components/TaskRow.tsx";
-import { dashboard } from "../lib/dashboard.ts";
-import { focus, todayISO } from "../lib/lenses.ts";
-import { activeTasks, inInbox } from "../lib/workspaces.ts";
+import { shortDate } from "../lib/format.ts";
+import { inboxSections } from "../lib/inbox.ts";
+import { todayISO } from "../lib/lenses.ts";
+import { activeTasks } from "../lib/workspaces.ts";
 import { useDataStore } from "../stores/dataStore.ts";
-import { TaskListView } from "./TaskListView.tsx";
 
-export function InboxView() {
-  const tasks = useDataStore((s) => s.tasks);
-  const add = useDataStore((s) => s.addTask);
-  return <>
-    <h2>Entrada</h2>
-    <QuickAdd label="O que você precisa fazer?" submit={(title) => add({ title })} />
-    <TaskListView title="" tasks={tasks.filter(inInbox)} emptyText="Sua entrada está em dia. Use o campo acima para registrar uma tarefa." />
-  </>;
-}
-
-export function TodayView() {
+export function InboxView({ openAgenda }: { openAgenda: () => void }) {
   const tasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
-  const active = activeTasks(tasks, areas, projects);
-  const focused = focus(active)[0];
-  const sections = dashboard(active.filter((t) => t.id !== focused?.id), todayISO()).filter((s) => s.id !== "unsorted");
-  return <>
-    <h2>Meu dia</h2>
-    {focused && <div className="focus-card"><span className="focus-label">★ Foco do dia</span><TaskRow task={focused} /></div>}
-    {!focused && !sections.length && <p className="empty">Nenhuma tarefa pede atenção agora. Use a Agenda para planejar os próximos dias.</p>}
-    {sections.map((section) => <section key={section.id} className={`dash-section ${section.id}`}>
-      <div className="dash-title"><span>{section.title}</span><span className="count">{section.tasks.length}</span></div>
-      {section.tasks.map((t) => <TaskRow task={t} key={t.id} />)}
-    </section>)}
-  </>;
+  const add = useDataStore((s) => s.addTask);
+  const date = new Date();
+  const today = todayISO(date);
+  const sections = inboxSections(activeTasks(tasks, areas, projects), today);
+  const render = (items: typeof sections.today) => items.map(({ task, scheduled }) => (
+    <TaskRow key={task.id} task={task} summary={{
+      scheduled: scheduled ? `${scheduled === today ? "Hoje" : shortDate(scheduled)}${task.startTime ? ` às ${task.startTime.slice(0, 5)}` : ""}` : undefined,
+    }} />
+  ));
+
+  return (
+    <div className="inbox-page">
+      <header className="inbox-head">
+        <div>
+          <time dateTime={today}>{date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time>
+          <h2>Entrada</h2>
+        </div>
+        <button className="btn ghost" onClick={openAgenda}>Abrir agenda <span aria-hidden="true">↗</span></button>
+      </header>
+
+      <QuickAdd label="O que você precisa fazer?" button="Adicionar" submit={(title) => add({ title })} />
+
+      {sections.overdue.length > 0 && (
+        <section className="inbox-section inbox-overdue" aria-labelledby="inbox-overdue">
+          <header><h3 id="inbox-overdue">Atrasadas</h3><span className="inbox-count">{sections.overdue.length}</span></header>
+          {render(sections.overdue)}
+        </section>
+      )}
+      <div className="inbox-timeline">
+        <section className="inbox-section" aria-labelledby="inbox-today">
+          <header><h3 id="inbox-today">Hoje</h3><span className="inbox-count">{sections.today.length}</span></header>
+          {sections.today.length ? render(sections.today) : <p className="empty">Nenhum compromisso ou prazo para hoje.</p>}
+        </section>
+        <section className="inbox-section" aria-labelledby="inbox-upcoming">
+          <header><h3 id="inbox-upcoming">Próximos 7 dias</h3><span className="inbox-count">{sections.upcoming.length}</span></header>
+          {sections.upcoming.length ? render(sections.upcoming) : <p className="empty">Nenhum compromisso ou entrega nesta semana.</p>}
+        </section>
+      </div>
+      {sections.priority.length > 0 && <section className="inbox-section" aria-labelledby="inbox-priority">
+        <header><h3 id="inbox-priority">Prioridades</h3><span className="inbox-count">{sections.priority.length}</span></header>
+        {render(sections.priority)}
+      </section>}
+      {sections.capture.length > 0 && <section className="inbox-section" aria-labelledby="inbox-capture">
+        <header><h3 id="inbox-capture">Para organizar</h3><span className="inbox-count">{sections.capture.length}</span></header>
+        {render(sections.capture)}
+      </section>}
+      {sections.waiting.length > 0 && <details className="inbox-section inbox-details">
+        <summary>Aguardando <span className="inbox-count">{sections.waiting.length}</span></summary>
+        {render(sections.waiting)}
+      </details>}
+      {sections.later.length > 0 && <details className="inbox-section inbox-details">
+        <summary>Outras tarefas <span className="inbox-count">{sections.later.length}</span></summary>
+        {render(sections.later)}
+      </details>}
+    </div>
+  );
 }

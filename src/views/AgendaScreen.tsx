@@ -1,3 +1,4 @@
+import type { Task } from "../types.ts";
 import { activeTasks } from "../lib/workspaces.ts";
 import { useState } from "react";
 import { TaskRow } from "../components/TaskRow.tsx";
@@ -11,26 +12,29 @@ type Mode = "list" | "month" | "grid";
 
 /** Agenda única: tudo que tem data ou prazo, em lista, mês ou grade de horários. */
 export function AgendaScreen() {
-  const [mode, setMode] = useState<Mode>("list");
-  return (
-    <>
-      <div className="seg view-toggle">
-        <button className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>Lista</button>
-        <button className={mode === "month" ? "on" : ""} onClick={() => setMode("month")}>Mês</button>
-        <button className={mode === "grid" ? "on" : ""} onClick={() => setMode("grid")}>Horários</button>
-      </div>
-      {mode === "list" && <AgendaList />}
-      {mode === "month" && <UpcomingView />}
-      {mode === "grid" && <AgendaView />}
-    </>
-  );
-}
-
-function AgendaList() {
+  const [mode, setMode] = useState<Mode>("month");
   const allTasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
   const tasks = activeTasks(allTasks, areas, projects);
+
+  return (
+    <>
+      <header className="page-head agenda-header">
+        <h2>Agenda</h2>
+        <div className="seg view-toggle" aria-label="Visualização da agenda">
+          {([["month", "Mês"], ["list", "Lista"], ["grid", "Horários"]] as const).map(([view, label]) =>
+            <button key={view} aria-pressed={mode === view} className={mode === view ? "on" : ""} onClick={() => setMode(view)}>{label}</button>)}
+        </div>
+      </header>
+      {mode === "list" && <AgendaList tasks={tasks} />}
+      <div hidden={mode !== "month"}><UpcomingView tasks={tasks} /></div>
+      {mode === "grid" && <AgendaView tasks={tasks} />}
+    </>
+  );
+}
+
+function AgendaList({ tasks }: { tasks: Task[] }) {
   const now = todayISO();
   const groups = agendaList(tasks, now);
   const label = (day: string) =>
@@ -39,7 +43,6 @@ function AgendaList() {
 
   return (
     <>
-      <h2>Agenda</h2>
       {groups.length === 0 && <p className="empty">Nenhuma tarefa com data ou prazo.</p>}
       {groups.map((g) => (
         <section key={g.day} className={`dash-section${g.day === "overdue" ? " overdue" : ""}`}>

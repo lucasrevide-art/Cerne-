@@ -67,7 +67,7 @@ export function SettingsView() {
 
   return (
     <>
-      <h2>Configurações</h2>
+      <h2>Conta e dados</h2>
       <p className="empty">Conectado como {email}</p>
 
       <div className="day-title">Trocar senha</div>
@@ -91,6 +91,8 @@ export function SettingsView() {
         ))}
       </div>
 
+      <Trash />
+
       <div className="day-title">Backup e restauração</div>
       <p className="empty">O arquivo JSON inclui os registros de trabalho da sua conta. A restauração adiciona registros e atualiza os de mesmo identificador. Convites, arquivos e histórico de aprovação ficam no espaço original.</p>
       <div className="settings-form">
@@ -100,5 +102,37 @@ export function SettingsView() {
         {bkMsg && <div className={bkMsg.ok ? "ok" : "error"}>{bkMsg.text}</div>}
       </div>
     </>
+  );
+}
+
+function Trash() {
+  const areas = useDataStore((s) => s.areas);
+  const projects = useDataStore((s) => s.projects);
+  const updateArea = useDataStore((s) => s.updateArea);
+  const updateProject = useDataStore((s) => s.updateProject);
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const entries = [...areas, ...projects].filter((item) => item.deletedAt)
+    .sort((a, b) => b.deletedAt!.localeCompare(a.deletedAt!));
+
+  return (
+    <details className="settings-trash">
+      <summary>Lixeira <span className="inbox-count">{entries.length}</span></summary>
+      {entries.length ? entries.map((item) => {
+        const project = "status" in item;
+        const parent = project ? areas.find((area) => area.id === item.areaId) : undefined;
+        return <div className="trash-row" key={item.id}>
+          <div><strong>{item.name}</strong><small>{project ? `Projeto${parent ? ` · ${parent.name}` : ""}` : "Área"}</small></div>
+          <button className="btn ghost" aria-label={`Restaurar ${item.name}`} disabled={!!restoring} onClick={async () => {
+            setRestoring(item.id); setMessage("");
+            try {
+              const ok = project ? await updateProject(item.id, { deletedAt: null }) : await updateArea(item.id, { deletedAt: null });
+              if (ok) setMessage(parent?.deletedAt ? `“${item.name}” foi restaurado. Restaure também “${parent.name}” para voltar a acessar o projeto.` : `“${item.name}” foi restaurado.`);
+            } finally { setRestoring(null); }
+          }}>{restoring === item.id ? "Restaurando…" : "Restaurar"}</button>
+        </div>;
+      }) : <p className="empty">Nenhuma área ou projeto na lixeira.</p>}
+      {message && <p role="status">{message}</p>}
+    </details>
   );
 }

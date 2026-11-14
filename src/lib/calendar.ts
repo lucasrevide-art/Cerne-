@@ -1,5 +1,6 @@
 import type { Task } from "../types.ts";
-import { addDays } from "./agenda.ts";
+import { todayISO } from "./lenses.ts";
+import { addDays, taskDay } from "./agenda.ts";
 
 /** Grade mensal: 6 semanas começando no domingo, cobrindo o mês de `anchor`. */
 export const monthGrid = (anchor: string): string[] => {
@@ -16,7 +17,7 @@ export const shiftMonth = (anchor: string, n: number): string => {
 };
 
 /** Agrupa tarefas ativas por dia de data e/ou prazo (sem duplicar no mesmo dia). */
-export const tasksByDay = (tasks: Task[]): Map<string, Task[]> => {
+export const tasksByDay = (tasks: Task[], now = todayISO()): Map<string, Task[]> => {
   const map = new Map<string, Task[]>();
   const push = (day: string, t: Task) => {
     const list = map.get(day) ?? [];
@@ -25,7 +26,8 @@ export const tasksByDay = (tasks: Task[]): Map<string, Task[]> => {
   };
   for (const t of tasks) {
     if (t.status !== "open" && t.status !== "waiting") continue;
-    if (t.whenDate) push(t.whenDate, t);
+    const scheduled = taskDay(t, now) ?? t.whenDate;
+    if (scheduled) push(scheduled, t);
     if (t.deadline) push(t.deadline, t);
   }
   return map;
@@ -33,7 +35,7 @@ export const tasksByDay = (tasks: Task[]): Map<string, Task[]> => {
 
 /** Agenda em lista: grupo "atrasadas" primeiro, depois cada dia a partir de hoje. */
 export function agendaList(tasks: Task[], now: string): { day: string | "overdue"; tasks: Task[] }[] {
-  const byDay = tasksByDay(tasks);
+  const byDay = tasksByDay(tasks, now);
   const overdue: Task[] = [];
   const days: { day: string; tasks: Task[] }[] = [];
   for (const day of [...byDay.keys()].sort()) {

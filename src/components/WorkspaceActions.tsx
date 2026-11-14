@@ -28,7 +28,7 @@ export function WorkspaceActions({ group, onPreview }: { group: Area | Project; 
     if (remove && !window.confirm(`Mover “${group.name}” para a lixeira? As tarefas, notas e arquivos permanecem vinculados. O acesso pelo portal fica suspenso até a restauração.`)) return;
     const date = restore ? null : stamp();
     void run(() => {
-      if (remove || group.deletedAt) {
+      if (remove) {
         return isProject ? updateProject(group.id, { deletedAt: date }) : updateArea(group.id, { deletedAt: date });
       }
       if (isProject) return updateProject(group.id, {
@@ -57,8 +57,7 @@ export function WorkspaceActions({ group, onPreview }: { group: Area | Project; 
             </>
           ))}
           {(scoped || isProject) && !group.deletedAt && <button disabled={busy} onClick={() => lifecycle(inactive)}>{inactive ? "Restaurar do arquivo" : "Arquivar"}</button>}
-          {scoped && (group.deletedAt ? <button disabled={busy} onClick={() => lifecycle(true)}>Restaurar da lixeira</button> :
-            <button className="danger" disabled={busy} onClick={() => lifecycle(false, true)}>Excluir…</button>)}
+          {scoped && !group.deletedAt && <button className="danger" disabled={busy} onClick={() => lifecycle(false, true)}>Mover para a lixeira…</button>}
         </div>
       </details>
       {panel === "edit" && (

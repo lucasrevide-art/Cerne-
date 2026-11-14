@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { activeTasks, inInbox, reviewLabel, workflow } from "../src/lib/workspaces.ts";
+import { inboxSections } from "../src/lib/inbox.ts";
+import { tasksByDay } from "../src/lib/calendar.ts";
+
 import type { Task } from "../src/types.ts";
 
 const task = (patch: Partial<Task>): Task => ({
@@ -38,4 +41,30 @@ test("espaços arquivados somem da rotina e preservam as tarefas", () => {
 test("uma aprovação se aplica à versão submetida", () => {
   assert.equal(reviewLabel({ kind: "approved", version: 1 }, 1), "Aprovado");
   assert.equal(reviewLabel({ kind: "approved", version: 1 }, 2), "Nova versão · revisão necessária");
+});
+
+test("Entrada mostra compromissos e prazos uma vez, incluindo atrasos de tarefas em espera", () => {
+  const sections = inboxSections([
+    task({ id: "atrasada", deadline: "2026-11-13", status: "waiting" }),
+    task({ id: "hoje", when: "today", startTime: "10:00" }),
+    task({ id: "agenda", when: "date", whenDate: "2026-11-16", startTime: "09:00", deadline: "2026-11-17" }),
+    task({ id: "prazo", deadline: "2026-11-21" }),
+    task({ id: "mais-tarde", deadline: "2026-11-22" }),
+    task({ id: "captura", inbox: true }),
+    task({ id: "prioridade", priority: 3 }),
+    task({ id: "concluída", deadline: "2026-11-13", status: "completed" }),
+  ], "2026-11-14");
+  assert.deepEqual(sections.overdue.map(({ task }) => task.id), ["atrasada"]);
+  assert.equal(sections.today[0]?.scheduled, "2026-11-14");
+  assert.deepEqual(sections.upcoming.map(({ task }) => task.id), ["agenda", "prazo"]);
+  assert.deepEqual(sections.capture.map(({ task }) => task.id), ["captura"]);
+  assert.deepEqual(sections.later.map(({ task }) => task.id), ["mais-tarde"]);
+  assert.deepEqual(sections.priority.map(({ task }) => task.id), ["prioridade"]);
+  assert.equal(sections.waiting.length, 0);
+});
+
+test("Agenda mensal reúne compromissos de hoje e prazos no mesmo dia sem duplicação", () => {
+  const now = "2026-11-14";
+  const meeting = task({ id: "reunião", when: "today", startTime: "11:00", deadline: now });
+  assert.deepEqual(tasksByDay([meeting], now).get(now), [meeting]);
 });

@@ -5,7 +5,7 @@ import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
 import { TaskEditor } from "./components/TaskEditor.tsx";
 import { VoiceButton } from "./components/VoiceButton.tsx";
 import { WorkspaceActions } from "./components/WorkspaceActions.tsx";
-import { archived, inInbox } from "./lib/workspaces.ts";
+import { archived } from "./lib/workspaces.ts";
 import { portalRepository } from "./lib/repository/portalRepository.ts";
 import type { SimpleView, View } from "./lib/nav.ts";
 import { useAuthStore } from "./stores/authStore.ts";
@@ -14,7 +14,7 @@ import { useUiStore } from "./stores/uiStore.ts";
 import { AgendaScreen } from "./views/AgendaScreen.tsx";
 import { AreasView, WorkspaceView } from "./views/AreaProjectViews.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
-import { InboxView, TodayView } from "./views/InboxView.tsx";
+import { InboxView } from "./views/InboxView.tsx";
 import { PortalView } from "./views/PortalView.tsx";
 import { SettingsView } from "./views/SettingsView.tsx";
 
@@ -83,7 +83,6 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   const subscribe = useDataStore((s) => s.subscribe);
   const reset = useDataStore((s) => s.reset);
   const loaded = useDataStore((s) => s.loaded);
-  const tasks = useDataStore((s) => s.tasks);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
   const error = useDataStore((s) => s.error);
@@ -109,9 +108,9 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     go={({ area, task, note }) => navigate({ kind: "portal", id: area, taskId: task, noteId: note, preview: true })}
     exit={() => view.id && navigate({ kind: "area", id: view.id })} signOut={() => void signOut()} />;
 
-  const nav = (kind: SimpleView, label: string, count?: number) => (
+  const nav = (kind: SimpleView, label: string) => (
     <button aria-current={view.kind === kind ? "page" : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
-      <span>{label}</span>{count ? <span className="count">{count}</span> : null}
+      <span>{label}</span>
     </button>
   );
   const currentProject = view.kind === "project" && projects.find((p) => p.id === view.id);
@@ -127,8 +126,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   const activeProjects = projects.filter((p) => !p.deletedAt && !archived(p));
   let content;
   switch (view.kind) {
-    case "inbox": content = <InboxView />; break;
-    case "today": content = <TodayView />; break;
+    case "inbox": content = <InboxView openAgenda={() => navigate({ kind: "agenda" })} />; break;
     case "agenda": content = <AgendaScreen />; break;
     case "areas": content = <AreasView go={navigate} />; break;
     case "completed": content = <CompletedView />; break;
@@ -143,8 +141,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     <aside className={`sidebar${mobileNav ? " mobile-open" : ""}`} aria-label="Navegação principal">
       <h1>Cerne</h1>
       <button className="nav-item search-link" onClick={togglePalette}><span>⌕ Buscar</span><kbd>⌘ K</kbd></button>
-      {nav("inbox", "Entrada", tasks.filter(inInbox).length)}
-      {nav("today", "Meu dia")}
+      {nav("inbox", "Entrada")}
       {nav("agenda", "Agenda")}
       {nav("areas", "Áreas")}
       <div className="sidebar-areas">
@@ -173,7 +170,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
         <button className="nav-item" onClick={() => void signOut()}>Sair</button>
       </details>
     </aside>
-    <main className={`main${["agenda", "project", "area"].includes(view.kind) ? " wide" : ""}`}>
+    <main className={`main${["agenda", "project", "area"].includes(view.kind) ? " wide" : ""}${view.kind === "inbox" ? " inbox-main" : ""}`}>
       {error && <div className="banner error" role="alert">{error} {!loaded && <button className="btn ghost" onClick={() => void load()}>Tentar novamente</button>}</div>}
       {loaded ? content : !error && <p role="status">Carregando seus dados…</p>}
     </main>

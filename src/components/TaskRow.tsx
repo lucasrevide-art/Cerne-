@@ -6,7 +6,7 @@ import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
 
-export function TaskRow({ task, readOnly }: { task: Task; readOnly?: boolean }) {
+export function TaskRow({ task, readOnly, summary }: { task: Task; readOnly?: boolean; summary?: { scheduled?: string } }) {
   const toggle = useDataStore((s) => s.toggleComplete);
   const setFocus = useDataStore((s) => s.setFocus);
   const update = useDataStore((s) => s.updateTask);
@@ -26,18 +26,27 @@ export function TaskRow({ task, readOnly }: { task: Task; readOnly?: boolean }) 
   const label = project ? (area ? `${area.name} › ${project.name}` : project.name) : area?.name;
 
   return (
-    <div className={`task${done ? " done" : ""}`}>
+    <div className={`task${summary ? " task-summary" : ""}${done ? " done" : ""}`}>
       {!readOnly && <button className={`check${done ? " done" : ""}`} disabled={busy} aria-label={done ? "Reabrir tarefa" : "Concluir tarefa"} onClick={async () => { setBusy(true); await toggle(task); setBusy(false); }} />}
-      <button className="title task-title" onClick={() => openEditor(task.id)}>{task.title}</button>
-      {task.priority >= 2 && <span className="chip prio" title={task.priority === 3 ? "Urgente" : "Prioridade alta"}>{task.priority === 3 ? "!!" : "!"}</span>}
-      {label && <span className="chip">{label}</span>}
-      {task.when === "date" && task.whenDate && <span className="chip">{shortDate(task.whenDate)}</span>}
-      {task.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean).map((g) => (
+      <div className={summary ? "task-brief" : "task-identity"}>
+        <button className="title task-title" onClick={() => openEditor(task.id)}>{task.title}</button>
+        {summary && <div className="task-brief-meta">
+          {summary.scheduled && <span>Agenda · {summary.scheduled}</span>}
+          {task.deadline && <span>Entrega · {shortDate(task.deadline)}</span>}
+          {task.isFocus && <span>Foco do dia</span>}
+          {task.priority >= 2 && <span className="task-brief-priority">{task.priority === 3 ? "Urgente" : "Prioridade alta"}</span>}
+          {label && <span>{label}</span>}
+        </div>}
+      </div>
+      {!summary && task.priority >= 2 && <span className="chip prio" title={task.priority === 3 ? "Urgente" : "Prioridade alta"}>{task.priority === 3 ? "!!" : "!"}</span>}
+      {!summary && label && <span className="chip">{label}</span>}
+      {!summary && task.when === "date" && task.whenDate && <span className="chip">{shortDate(task.whenDate)}</span>}
+      {!summary && task.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean).map((g) => (
         <span key={g!.id} className="chip tag" style={{ ["--tag" as string]: g!.color }}>{g!.name}</span>
       ))}
-      {sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
-      {recurring && <span className="chip" title="Recorrente">↻</span>}
-      {task.deadline && <span className="chip">prazo {shortDate(task.deadline)}</span>}
+      {!summary && sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
+      {!summary && recurring && <span className="chip" title="Recorrente">↻</span>}
+      {!summary && task.deadline && <span className="chip">prazo {shortDate(task.deadline)}</span>}
       {!done && !readOnly && (
         <button className={`star${task.isFocus ? " on" : ""}`} aria-pressed={task.isFocus} aria-label="Marcar foco do dia" title="Foco do dia" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>
       )}
