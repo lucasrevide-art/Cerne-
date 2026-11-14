@@ -1,13 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { addDays, allDayOn, clampBlock, layoutDay, snap, timedOn, weekDays } from "../src/lib/agenda.ts";
-import { byColumn, dropOrder, movePatch } from "../src/lib/board.ts";
+import { LEGACY_COLUMNS, byColumn, canRemoveColumn, columnIdOf, dropOrder, movePatch, swapOrder, type ColumnDef } from "../src/lib/board.ts";
 import type { Task } from "../src/types.ts";
 
 const base: Task = {
   id: "1", title: "t", notes: "", when: null, whenDate: null, deadline: null, status: "open",
   priority: 0, type: "default", amount: null, category: null, projectId: null, areaId: null,
-  tagIds: [], isFocus: false, startTime: null, durationMinutes: null, boardStage: "todo",
+  tagIds: [], isFocus: false, startTime: null, durationMinutes: null, boardStage: "todo", columnId: null,
   createdAt: "2026-01-01T00:00:00Z", completedAt: null, sortOrder: 0,
 };
 const mk = (p: Partial<Task>): Task => ({ ...base, ...p });
@@ -50,23 +50,68 @@ test("clampBlock mantém dentro da grade", () => {
   assert.deepEqual(clampBlock(21 * 60 + 30, 120), { start: 20 * 60, duration: 120 });
 });
 
-test("quadro: concluída sempre em Concluído", () => {
-  const c = byColumn([mk({ id: "a", status: "completed", boardStage: "doing" }), mk({ id: "b", boardStage: "review" })]);
+const L = LEGACY_COLUMNS;
+const col = (id: string) => L.find((c) => c.id === id)!;
+
+test("quadro (modo antigo): concluída sempre em Concluído", () => {
+  const c = byColumn([mk({ id: "a", status: "completed", boardStage: "doing" }), mk({ id: "b", boardStage: "review" })], L, false);
   assert.equal(c.done.length, 1);
   assert.equal(c.review.length, 1);
 });
 
-test("mover para Concluído conclui; sair de Concluído reabre", () => {
-  assert.equal(movePatch(mk({}), "done").status, "completed");
-  const p = movePatch(mk({ status: "completed" }), "doing");
+test("quadro (modo antigo): mover para Concluído conclui; sair reabre", () => {
+  assert.equal(movePatch(mk({}), col("done"), false).status, "completed");
+  const p = movePatch(mk({ status: "completed" }), col("doing"), false);
   assert.deepEqual([p.status, p.boardStage, p.completedAt], ["open", "doing", null]);
 });
 
+const CUSTOM: ColumnDef[] = [
+  { id: "c1", name: "Backlog", isDone: false, sortOrder: 1 },
+  { id: "c2", name: "Em produção", isDone: false, sortOrder: 2 },
+  { id: "c9", name: "Finalizado", isDone: true, sortOrder: 3 },
+];
+
+test("colunas livres: tarefa sem coluna (ou com coluna excluída) cai na primeira aberta", () => {
+  assert.equal(columnIdOf(mk({}), CUSTOM, true), "c1");
+  assert.equal(columnIdOf(mk({ columnId: "apagada" }), CUSTOM, true), "c1");
+  assert.equal(columnIdOf(mk({ columnId: "c2" }), CUSTOM, true), "c2");
+  assert.equal(columnIdOf(mk({ columnId: "c2", status: "completed" }), CUSTOM, true), "c9");
+  // a primeira aberta é pela ordem, não pela posição no array
+  const shuffled = [CUSTOM[1], CUSTOM[2], CUSTOM[0]];
+  assert.equal(columnIdOf(mk({}), shuffled, true), "c1");
+});
+
+test("colunas livres: mover grava columnId; concluído conclui; sair reabre na coluna", () => {
+  assert.deepEqual(movePatch(mk({}), CUSTOM[1], true), { columnId: "c2" });
+  assert.equal(movePatch(mk({}), CUSTOM[2], true).status, "completed");
+  assert.equal("columnId" in movePatch(mk({}), CUSTOM[2], true), false);
+  const p = movePatch(mk({ status: "completed" }), CUSTOM[0], true);
+  assert.deepEqual([p.status, p.columnId, p.completedAt], ["open", "c1", null]);
+});
+
+test("colunas livres: agrupar ignora canceladas e ordena", () => {
+  const g = byColumn([mk({ id: "a", columnId: "c2", sortOrder: 2 }), mk({ id: "b", columnId: "c2", sortOrder: 1 }), mk({ id: "x", status: "canceled" })], CUSTOM, true);
+  assert.deepEqual(g.c2.map((t) => t.id), ["b", "a"]);
+  assert.equal(g.c1.length, 0);
+});
+
+test("reordenar colunas troca com a vizinha e respeita as pontas", () => {
+  assert.deepEqual(swapOrder(CUSTOM, "c1", 1), [{ id: "c2", sortOrder: 1 }, { id: "c1", sortOrder: 2 }]);
+  assert.deepEqual(swapOrder(CUSTOM, "c1", -1), []);
+  assert.deepEqual(swapOrder(CUSTOM, "c9", 1), []);
+});
+
+test("excluir coluna: nunca a de concluído nem a última aberta", () => {
+  assert.equal(canRemoveColumn(CUSTOM, "c1"), true);
+  assert.equal(canRemoveColumn(CUSTOM, "c9"), false);
+  assert.equal(canRemoveColumn([CUSTOM[0], CUSTOM[2]], "c1"), false);
+});
+
 test("dropOrder insere entre vizinhos", () => {
-  const col = [mk({ id: "a", sortOrder: 0 }), mk({ id: "b", sortOrder: 2 })];
-  assert.equal(dropOrder(col, "b", "x"), 1);
-  assert.equal(dropOrder(col, "a", "x"), -1);
-  assert.equal(dropOrder(col, null, "x"), 3);
+  const list = [mk({ id: "a", sortOrder: 0 }), mk({ id: "b", sortOrder: 2 })];
+  assert.equal(dropOrder(list, "b", "x"), 1);
+  assert.equal(dropOrder(list, "a", "x"), -1);
+  assert.equal(dropOrder(list, null, "x"), 3);
 });
 
 import { monthGrid, shiftMonth, tasksByDay } from "../src/lib/calendar.ts";

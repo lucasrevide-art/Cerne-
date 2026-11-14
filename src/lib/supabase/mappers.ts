@@ -1,4 +1,4 @@
-import type { Area, Note, Project, Recurrence, Subtask, Tag, Task } from "../../types.ts";
+import type { Area, BoardColumn, Note, Project, Recurrence, Subtask, Tag, Task } from "../../types.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Row = Record<string, any>;
@@ -22,6 +22,7 @@ export const taskFromRow = (r: Row, tagIds: string[] = []): Task => ({
   startTime: r.start_time,
   durationMinutes: r.duration_minutes,
   boardStage: r.board_stage,
+  columnId: r.column_id ?? null,
   createdAt: r.created_at,
   completedAt: r.completed_at,
   sortOrder: r.sort_order,
@@ -31,7 +32,7 @@ export const taskToRow = (t: Partial<Task>): Row => {
   const m: Record<string, string> = {
     when: "when_kind", whenDate: "when_date", projectId: "project_id", areaId: "area_id",
     isFocus: "is_focus", startTime: "start_time", durationMinutes: "duration_minutes",
-    boardStage: "board_stage", createdAt: "created_at", completedAt: "completed_at", sortOrder: "sort_order",
+    boardStage: "board_stage", columnId: "column_id", createdAt: "created_at", completedAt: "completed_at", sortOrder: "sort_order",
   };
   const out: Row = {};
   for (const [k, v] of Object.entries(t)) {
@@ -40,6 +41,10 @@ export const taskToRow = (t: Partial<Task>): Row => {
   }
   return out;
 };
+
+export const columnFromRow = (r: Row): BoardColumn => ({
+  id: r.id, name: r.name, isDone: r.is_done, sortOrder: r.sort_order,
+});
 
 export const subtaskFromRow = (r: Row): Subtask => ({
   id: r.id, taskId: r.task_id, title: r.title, status: r.status, sortOrder: r.sort_order,

@@ -21,8 +21,18 @@ export interface Task {
   startTime: string | null;
   durationMinutes: number | null;
   boardStage: BoardStage;
+  /** Coluna personalizada do quadro (null = primeira coluna). */
+  columnId: string | null;
   createdAt: string;
   completedAt: string | null;
+  sortOrder: number;
+}
+
+export interface BoardColumn {
+  id: string;
+  name: string;
+  /** Coluna de "concluído": soltar um cartão nela conclui a tarefa. */
+  isDone: boolean;
   sortOrder: number;
 }
 

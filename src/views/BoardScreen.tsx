@@ -7,6 +7,7 @@ import { BoardView } from "./BoardView.tsx";
 export function BoardScreen() {
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
+  const custom = useDataStore((s) => s.customColumns);
   const [value, setValue] = useState("all");
 
   const [kind, id] = value.split(":");
@@ -37,7 +38,11 @@ export function BoardScreen() {
         </select>
       </div>
       <BoardView scope={scope} />
-      <p className="empty board-hint">Arraste os cartões entre as colunas. Soltar em Concluído conclui a tarefa.</p>
+      <p className="empty board-hint">
+        {custom
+          ? "Arraste os cartões entre as colunas. Clique no nome de uma coluna para renomear; a coluna com ✓ conclui a tarefa."
+          : "Arraste os cartões entre as colunas. Soltar em Concluído conclui a tarefa."}
+      </p>
     </>
   );
 }

@@ -1,7 +1,9 @@
 /** Ordem respeita chaves estrangeiras (pais antes de filhos). */
 export const TABLES = [
-  "areas", "projects", "tags", "tasks", "task_tags", "subtasks", "notes", "recurrences",
+  "areas", "projects", "tags", "board_columns", "tasks", "task_tags", "subtasks", "notes", "recurrences",
 ] as const;
+/** Tabelas que backups antigos (ou bancos sem a migração) podem não ter. */
+export const OPTIONAL_TABLES: readonly string[] = ["board_columns"];
 export type TableName = (typeof TABLES)[number];
 export type Tables = Record<TableName, Record<string, unknown>[]>;
 
@@ -30,7 +32,10 @@ export function parseBackup(text: string): Tables {
   const out = {} as Tables;
   for (const t of TABLES) {
     const rows = b.tables?.[t];
-    if (!Array.isArray(rows)) throw new Error(`Backup incompleto: falta a tabela "${t}".`);
+    if (!Array.isArray(rows)) {
+      if (OPTIONAL_TABLES.includes(t)) { out[t] = []; continue; }
+      throw new Error(`Backup incompleto: falta a tabela "${t}".`);
+    }
     out[t] = rows;
   }
   return out;

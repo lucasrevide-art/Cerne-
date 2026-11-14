@@ -1,6 +1,6 @@
 import { supabase } from "../supabase/client.ts";
-import { TABLES, chunk, stripOwner, type Tables } from "../backup.ts";
-import { fetchAll, unwrap } from "./util.ts";
+import { OPTIONAL_TABLES, TABLES, chunk, stripOwner, type Tables } from "../backup.ts";
+import { fetchAll, isMissingTable, unwrap } from "./util.ts";
 
 export const backupRepository = {
   /** Exporta as linhas cruas (RLS já restringe ao usuário logado). */
@@ -9,11 +9,17 @@ export const backupRepository = {
     for (const t of TABLES) {
       // task_tags não tem id: a chave composta dá a ordem estável.
       const order = t === "task_tags" ? ["task_id", "tag_id"] : ["id"];
-      out[t] = (await fetchAll((a, b) => {
-        let q = supabase.from(t).select("*");
-        for (const col of order) q = q.order(col);
-        return q.range(a, b);
-      })) as Record<string, unknown>[];
+      try {
+        out[t] = (await fetchAll((a, b) => {
+          let q = supabase.from(t).select("*");
+          for (const col of order) q = q.order(col);
+          return q.range(a, b);
+        })) as Record<string, unknown>[];
+      } catch (e) {
+        // Banco sem a migração de colunas: exporta o resto normalmente.
+        if (OPTIONAL_TABLES.includes(t) && isMissingTable(e)) out[t] = [];
+        else throw e;
+      }
     }
     return out;
   },

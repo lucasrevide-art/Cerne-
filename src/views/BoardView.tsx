@@ -1,28 +1,44 @@
 import { useState } from "react";
 import { progress } from "../lib/subtasks.ts";
-import { COLUMNS, boardTasks, byColumn, columnOf, dropOrder, movePatch, type BoardScope, type Column } from "../lib/board.ts";
+import {
+  LEGACY_COLUMNS, boardTasks, byColumn, canRemoveColumn, dropOrder, movePatch, sortColumns,
+  type BoardScope, type ColumnDef,
+} from "../lib/board.ts";
 import { shortDate } from "../lib/format.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
-import type { BoardStage, Task } from "../types.ts";
+import type { Task } from "../types.ts";
 
-/** Quadro Kanban: 4 colunas fixas; arrastar muda de coluna (ou conclui/reabre). */
+/**
+ * Quadro Kanban. Com a migração de colunas rodada, as colunas são do usuário
+ * (criar, renomear, reordenar, excluir); sem ela, usa as 4 colunas fixas.
+ */
 export function BoardView({ scope }: { scope: BoardScope }) {
   const allTasks = useDataStore((s) => s.tasks);
   const tags = useDataStore((s) => s.tags);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
   const subtasks = useDataStore((s) => s.subtasks);
+  const userColumns = useDataStore((s) => s.columns);
+  const custom = useDataStore((s) => s.customColumns);
   const addTask = useDataStore((s) => s.addTask);
   const updateTask = useDataStore((s) => s.updateTask);
   const setFocus = useDataStore((s) => s.setFocus);
+  const addColumn = useDataStore((s) => s.addColumn);
+  const renameColumn = useDataStore((s) => s.renameColumn);
+  const moveColumn = useDataStore((s) => s.moveColumn);
+  const removeColumn = useDataStore((s) => s.removeColumn);
   const openEditor = useUiStore((s) => s.openEditor);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [over, setOver] = useState<Column | null>(null);
-  const [drafts, setDrafts] = useState<Partial<Record<Column, string>>>({});
 
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
+  const [newColumn, setNewColumn] = useState("");
+
+  const columns: ColumnDef[] = custom ? sortColumns(userColumns) : LEGACY_COLUMNS;
   const tasks = boardTasks(allTasks, scope);
-  const cols = byColumn(tasks);
+  const cols = byColumn(tasks, columns, custom);
 
   // Onde nasce um cartão novo, conforme o quadro aberto.
   const project = scope.kind === "project" ? projects.find((p) => p.id === scope.id) : undefined;
@@ -31,23 +47,39 @@ export function BoardView({ scope }: { scope: BoardScope }) {
     areaId: scope.kind === "area" ? scope.id : project?.areaId ?? null,
   };
 
-  const drop = (to: Column, beforeId: string | null) => {
+  const drop = (to: ColumnDef, beforeId: string | null) => {
     const t = tasks.find((x) => x.id === dragId);
     setDragId(null);
     setOver(null);
     if (!t) return;
-    void updateTask(t.id, { ...movePatch(t, to), sortOrder: dropOrder(cols[to], beforeId, t.id) });
+    void updateTask(t.id, { ...movePatch(t, to, custom), sortOrder: dropOrder(cols[to.id] ?? [], beforeId, t.id) });
   };
 
-  const add = (stage: BoardStage) => {
-    const title = (drafts[stage] ?? "").trim();
+  const add = (c: ColumnDef) => {
+    const title = (drafts[c.id] ?? "").trim();
     if (!title) return;
-    const last = cols[stage][cols[stage].length - 1];
-    void addTask({ title, ...home, boardStage: stage, sortOrder: (last?.sortOrder ?? 0) + 1 });
-    setDrafts({ ...drafts, [stage]: "" });
+    const list = cols[c.id] ?? [];
+    const sortOrder = (list[list.length - 1]?.sortOrder ?? 0) + 1;
+    const place: Partial<Task> = custom ? { columnId: c.id } : { boardStage: c.id as Task["boardStage"] };
+    void addTask({ title, ...home, ...place, sortOrder });
+    setDrafts({ ...drafts, [c.id]: "" });
   };
 
-  const card = (t: Task) => {
+  const commitRename = () => {
+    if (renaming && renaming.name.trim()) void renameColumn(renaming.id, renaming.name);
+    setRenaming(null);
+  };
+
+  const remove = (c: ColumnDef) => {
+    const n = allTasks.filter((t) => t.columnId === c.id && t.status !== "completed" && t.status !== "canceled").length;
+    const first = columns.find((x) => !x.isDone && x.id !== c.id)?.name;
+    const msg = n > 0
+      ? `Excluir a coluna "${c.name}"? ${n === 1 ? "O cartão dela vai" : `Os ${n} cartões dela vão`} para "${first}".`
+      : `Excluir a coluna "${c.name}"?`;
+    if (window.confirm(msg)) void removeColumn(c.id);
+  };
+
+  const card = (t: Task, column: ColumnDef) => {
     const sub = progress(subtasks, t.id);
     const tagList = t.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean);
     // No quadro amplo, mostra de onde é o cartão.
@@ -61,7 +93,7 @@ export function BoardView({ scope }: { scope: BoardScope }) {
         onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", t.id); setDragId(t.id); }}
         onDragEnd={() => { setDragId(null); setOver(null); }}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); drop(columnOf(t), t.id); }}
+        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); drop(column, t.id); }}
         onClick={() => openEditor(t.id)}
       >
         <span className="card-title">{t.title}</span>
@@ -84,18 +116,47 @@ export function BoardView({ scope }: { scope: BoardScope }) {
 
   return (
     <div className="board">
-      {COLUMNS.map((c) => (
+      {columns.map((c, i) => (
         <div
           key={c.id}
           className={`board-col${over === c.id ? " over" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setOver(c.id); }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver((o) => (o === c.id ? null : o)); }}
-          onDrop={(e) => { e.preventDefault(); drop(c.id, null); }}
+          onDrop={(e) => { e.preventDefault(); drop(c, null); }}
         >
-          <h3><span>{c.label}</span><span className="count">{cols[c.id].length}</span></h3>
-          <div className="board-cards">{cols[c.id].map(card)}</div>
-          {c.id !== "done" && (
-            <form onSubmit={(e) => { e.preventDefault(); add(c.id as BoardStage); }}>
+          <div className="board-head">
+            {renaming?.id === c.id ? (
+              <input
+                autoFocus
+                className="board-rename"
+                value={renaming.name}
+                onChange={(e) => setRenaming({ id: c.id, name: e.target.value })}
+                onBlur={commitRename}
+                onKeyDown={(e) => { if (e.key === "Enter") commitRename(); else if (e.key === "Escape") setRenaming(null); }}
+              />
+            ) : (
+              <h3
+                title={custom ? "Clique para renomear" : undefined}
+                onClick={() => custom && setRenaming({ id: c.id, name: c.name })}
+                className={custom ? "editable" : ""}
+              >
+                {c.name}{c.isDone && <span className="done-mark" title="Soltar aqui conclui a tarefa"> ✓</span>}
+              </h3>
+            )}
+            <span className="count">{(cols[c.id] ?? []).length}</span>
+            {custom && renaming?.id !== c.id && (
+              <span className="board-tools">
+                <button aria-label={`Mover ${c.name} para a esquerda`} disabled={i === 0} onClick={() => void moveColumn(c.id, -1)}>‹</button>
+                <button aria-label={`Mover ${c.name} para a direita`} disabled={i === columns.length - 1} onClick={() => void moveColumn(c.id, 1)}>›</button>
+                {canRemoveColumn(columns, c.id) && (
+                  <button aria-label={`Excluir coluna ${c.name}`} onClick={() => remove(c)}>×</button>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="board-cards">{(cols[c.id] ?? []).map((t) => card(t, c))}</div>
+          {!c.isDone && (
+            <form onSubmit={(e) => { e.preventDefault(); add(c); }}>
               <input
                 placeholder="+ Adicionar cartão"
                 value={drafts[c.id] ?? ""}
@@ -105,6 +166,14 @@ export function BoardView({ scope }: { scope: BoardScope }) {
           )}
         </div>
       ))}
+      {custom && (
+        <form
+          className="board-col board-new"
+          onSubmit={(e) => { e.preventDefault(); void addColumn(newColumn); setNewColumn(""); }}
+        >
+          <input placeholder="+ Adicionar coluna" value={newColumn} onChange={(e) => setNewColumn(e.target.value)} />
+        </form>
+      )}
     </div>
   );
 }

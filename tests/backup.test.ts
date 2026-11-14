@@ -42,3 +42,20 @@ test("subtarefas: ordena e conta progresso por tarefa", () => {
   assert.deepEqual(progress(all, "t1"), { done: 1, total: 2 });
   assert.deepEqual(progress(all, "nada"), { done: 0, total: 0 });
 });
+
+test("backup antigo sem board_columns ainda é aceito", () => {
+  const t = empty();
+  const old = buildBackup(t) as unknown as { tables: Record<string, unknown> };
+  delete old.tables.board_columns;
+  assert.deepEqual(parseBackup(JSON.stringify(old)).board_columns, []);
+  assert.ok(TABLES.indexOf("board_columns") < TABLES.indexOf("tasks"));
+});
+
+import { isMissingTable } from "../src/lib/repository/util.ts";
+
+test("detecta tabela ausente pelo erro do Supabase", () => {
+  assert.ok(isMissingTable({ code: "PGRST205", message: "Could not find the table 'public.board_columns' in the schema cache" }));
+  assert.ok(isMissingTable(new Error("Could not find the table 'public.x' in the schema cache")));
+  assert.ok(!isMissingTable({ code: "42501", message: "permission denied" }));
+  assert.ok(!isMissingTable(null));
+});

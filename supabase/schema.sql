@@ -5,6 +5,7 @@ drop table if exists task_tags cascade;
 drop table if exists subtasks cascade;
 drop table if exists notes cascade;
 drop table if exists tasks cascade;
+drop table if exists board_columns cascade;
 drop table if exists tags cascade;
 drop table if exists projects cascade;
 drop table if exists areas cascade;
@@ -36,6 +37,15 @@ create table tags (
   color text not null default '#6B7F7B'
 );
 
+create table board_columns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  name text not null,
+  is_done boolean not null default false,
+  sort_order double precision not null default 0
+);
+create unique index board_columns_one_done_per_user on board_columns(user_id) where is_done;
+
 create table tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
@@ -54,7 +64,8 @@ create table tasks (
   is_focus boolean not null default false,
   start_time text,
   duration_minutes integer,
-  board_stage text not null default 'todo' check (board_stage in ('todo','doing','review')),
+  board_stage text not null default 'todo' check (board_stage in ('todo','doing','review')), -- legado
+  column_id uuid references board_columns(id) on delete set null,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
   sort_order double precision not null default 0
@@ -106,11 +117,11 @@ create index on notes(area_id);
 do $$
 declare t text;
 begin
-  foreach t in array array['areas','projects','tags','tasks','task_tags','subtasks','notes','recurrences'] loop
+  foreach t in array array['areas','projects','tags','board_columns','tasks','task_tags','subtasks','notes','recurrences'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy "own rows" on %I for all using (auth.uid() = user_id) with check (auth.uid() = user_id)', t);
   end loop;
 end $$;
 
 -- Realtime
-alter publication supabase_realtime add table areas, projects, tags, tasks, task_tags, subtasks, notes, recurrences;
+alter publication supabase_realtime add table areas, projects, tags, board_columns, tasks, task_tags, subtasks, notes, recurrences;
