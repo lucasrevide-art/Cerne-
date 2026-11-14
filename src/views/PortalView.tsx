@@ -5,6 +5,7 @@ import { reviewLabel } from "../lib/workspaces.ts";
 import { shortDate } from "../lib/format.ts";
 import { FormattedNote } from "../components/FormattedNote.tsx";
 import { ItemFiles } from "../components/ItemFiles.tsx";
+import { Notice } from "../components/Notice.tsx";
 import { TaskActivity } from "../components/TaskActivity.tsx";
 
 type Selection = { area?: string; task?: string; note?: string };
@@ -58,7 +59,7 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
       {preview ? <button className="btn ghost" onClick={exit}>Sair da prévia</button> :
         <div className="mode-row"><button className="btn ghost" onClick={() => go({})}>Áreas compartilhadas</button><button className="btn ghost" onClick={signOut}>Sair</button></div>}
     </header>
-    {preview && <div className="banner">Prévia do cliente</div>}
+    {preview && <Notice tone="info">Prévia do cliente</Notice>}
     {loading && <p role="status">Carregando portal…</p>}
     {error && <p className="error" role="alert">{error}</p>}
     {!selection.area && !loading && !error && <>

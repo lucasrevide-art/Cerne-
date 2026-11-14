@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { portalRepository, type Activity, type ActivityKind } from "../lib/repository/portalRepository.ts";
+import { Notice } from "./Notice.tsx";
 import { reviewLabel } from "../lib/workspaces.ts";
 
 const labels: Record<ActivityKind, string> = {
@@ -23,6 +24,7 @@ export function TaskActivity({ id, version, permission, shared, onChange }: {
   }, [id, version]);
   const last = events.find((event) => event.kind !== "comment");
   const status = reviewLabel(last, version);
+  const tone = last?.version !== version ? "warning" : last.kind === "approved" ? "success" : last.kind === "changes" ? "warning" : "info";
   const owner = permission === "owner";
   const canReview = permission === "edit" || permission === "review";
   const awaiting = last?.kind === "requested" && last.version === version;
@@ -39,7 +41,7 @@ export function TaskActivity({ id, version, permission, shared, onChange }: {
   };
   return <section className="stack item-section">
     <h3>Comentários e aprovação</h3>
-    {status && <p className="review-state">{status} · versão {version}</p>}
+    {status && <Notice tone={tone} role="status">{status} · versão {version}</Notice>}
     {owner && shared && !awaiting && !(last?.kind === "approved" && last.version === version) &&
       <button className="btn ghost" disabled={busy} onClick={() => void act("requested")}>Solicitar aprovação da versão {version}</button>}
     {(owner || canReview) && <>

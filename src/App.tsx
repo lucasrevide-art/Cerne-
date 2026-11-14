@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Notice } from "./components/Notice.tsx";
 import { AuthScreen } from "./components/AuthScreen.tsx";
 import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
 import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
@@ -171,7 +172,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
       </details>
     </aside>
     <main className={`main${["agenda", "project", "area"].includes(view.kind) ? " wide" : ""}${view.kind === "inbox" ? " inbox-main" : ""}`}>
-      {error && <div className="banner error" role="alert">{error} {!loaded && <button className="btn ghost" onClick={() => void load()}>Tentar novamente</button>}</div>}
+      {error && <Notice tone="error" role="alert" action={!loaded && <button className="btn text" onClick={() => void load()}>Tentar novamente</button>}>{error}</Notice>}
       {loaded ? content : !error && <p role="status">Carregando seus dados…</p>}
     </main>
     <TaskEditor />

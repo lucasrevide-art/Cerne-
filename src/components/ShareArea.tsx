@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { portalRepository, type AccessLevel, type AreaAccess } from "../lib/repository/portalRepository.ts";
+import visibilityOff from "../assets/visibility-off.svg";
+import { Notice } from "./Notice.tsx";
 import type { Area } from "../types.ts";
 
 const levels: Record<AccessLevel, string> = { view: "Visualizar", review: "Comentar e aprovar", edit: "Editar tarefas, comentar e aprovar" };
@@ -29,7 +31,7 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
     <div className="modal-backdrop">
       <div className="modal" role="dialog" aria-modal="true" aria-label={`Compartilhar ${area.name}`}>
         <h3>Compartilhar {area.name}</h3>
-        <p>O portal mostra o nome e a descrição da área, projetos compartilhados e tarefas, notas e arquivos marcados para o cliente. Um projeto interno mantém seu conteúdo interno. Novos itens começam internos.</p>
+        <Notice tone="info" title="Visibilidade no portal" icon={visibilityOff}>O cliente vê o nome e a descrição da área e os itens marcados como compartilhados. Projetos internos e novos itens ficam privados.</Notice>
         <form className="stack" onSubmit={(e) => {
           e.preventDefault();
           if (busy) return;
@@ -63,7 +65,7 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
         ))}
         {access.some((entry) => !entry.member_id) && <p className="empty">Envie o link à pessoa convidada. Ela precisa entrar com o e-mail confirmado que consta no convite.</p>}
         {busy && <span role="status">Aguarde…</span>}
-        {error && <span role="alert" className="error">{error}</span>}
+        {error && <Notice tone="error" role="alert">{error}</Notice>}
         <button className="btn ghost" onClick={close}>Fechar</button>
       </div>
     </div>

@@ -5,10 +5,22 @@
   --color-accent-soft: #e3eeeb;
   --color-bg: #fafaf8;
   --color-surface: #ffffff;
-  --color-sidebar: #f2f2ee;
-  --color-text: #1d2422;
-  --color-text-muted: #6b7673;
-  --color-border: #e4e4de;
+  --color-sidebar: #f8f8f9;
+  --color-text: #1a1a25;
+  --color-text-muted: #666777;
+  --color-border: #e5e4ea;
+  --color-field: #f8f8f9;
+  --color-control-hover: #f3f2f8;
+  --color-control-border: rgb(22 22 23 / 14%);
+  --color-info-bg: #f3f2f8;
+  --color-info-mark: #d7d6fb;
+  --color-info-text: #453fa5;
+  --color-success-bg: #e3fbe4;
+  --color-success-mark: #d8f4d9;
+  --color-success-text: #24573b;
+  --color-attention-bg: #fdebe0;
+  --color-attention-mark: #f8dbcb;
+  --color-attention-text: #8a382c;
   --color-danger: #b4423a;
   --color-focus: #c98a1a;
   --color-on-accent: #ffffff;
@@ -30,15 +42,19 @@
   /* tipografia */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --text-sm: 13px;
-  --text-md: 15px;
+  --text-md: 14.5px;
+  --text-component-title: 16.5px;
+  --leading-ui: 1.4;
   --text-lg: 20px;
   --text-xl: 28px;
 
   /* forma */
   --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-control: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgb(29 36 34 / 8%);
+  --radius-pill: 28px;
+  --shadow-sm: 0 4px 4px rgb(9 11 33 / 4%);
   --shadow-md: 0 6px 20px rgb(29 36 34 / 12%);
 
   /* movimento */
@@ -57,7 +73,19 @@
   --color-sidebar: #171c1a;
   --color-text: #e7ecea;
   --color-text-muted: #94a19c;
-  --color-border: #2d3633;
+  --color-border: #34363a;
+  --color-field: #222427;
+  --color-control-hover: #292733;
+  --color-control-border: #45464c;
+  --color-info-bg: #29263a;
+  --color-info-mark: #3a3456;
+  --color-info-text: #d5cefb;
+  --color-success-bg: #1c3429;
+  --color-success-mark: #294c3b;
+  --color-success-text: #b7ecc9;
+  --color-attention-bg: #382921;
+  --color-attention-mark: #55382c;
+  --color-attention-text: #ffcab2;
   --color-danger: #e58a80;
   --color-focus: #e3ad45;
   --color-on-accent: #0e1513;

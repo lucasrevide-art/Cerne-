@@ -3,6 +3,7 @@ import { DEFAULT_DURATION, END_HOUR, MIN_DURATION, SLOT, START_HOUR, toMinutes }
 import { monthGrid, shiftMonth, tasksByDay } from "../lib/calendar.ts";
 import { todayISO } from "../lib/lenses.ts";
 import { useDataStore } from "../stores/dataStore.ts";
+import { Notice } from "../components/Notice.tsx";
 import { TaskRow } from "../components/TaskRow.tsx";
 import type { Task } from "../types.ts";
 
@@ -115,7 +116,7 @@ function DayForm({ day }: { day: string }) {
       </div>
     </details>
     <button className="btn" disabled={busy || !title.trim()}>{busy ? "Salvando…" : "Adicionar à agenda"}</button>
-    {savedDay === day && <small role="status">Salvo na agenda.</small>}
-    {failed && error && <small role="alert" className="error">{error}</small>}
+    {savedDay === day && <Notice tone="success" role="status">Salvo na agenda.</Notice>}
+    {failed && error && <Notice tone="error" role="alert">{error}</Notice>}
   </form>;
 }

@@ -1,3 +1,4 @@
+import arrowRight from "../assets/arrow-right.svg";
 import { QuickAdd } from "../components/QuickAdd.tsx";
 import { TaskRow } from "../components/TaskRow.tsx";
 import { shortDate } from "../lib/format.ts";
@@ -27,10 +28,10 @@ export function InboxView({ openAgenda }: { openAgenda: () => void }) {
           <time dateTime={today}>{date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time>
           <h2>Entrada</h2>
         </div>
-        <button className="btn ghost" onClick={openAgenda}>Abrir agenda <span aria-hidden="true">↗</span></button>
+        <button className="btn ghost large" onClick={openAgenda}>Abrir agenda <img className="btn-icon" src={arrowRight} alt="" /></button>
       </header>
 
-      <QuickAdd label="O que você precisa fazer?" button="Adicionar" submit={(title) => add({ title })} />
+      <QuickAdd label="O que você precisa fazer?" button="Adicionar" showIcon submit={(title) => add({ title })} />
 
       {sections.overdue.length > 0 && (
         <section className="inbox-section inbox-overdue" aria-labelledby="inbox-overdue">
