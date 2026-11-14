@@ -137,3 +137,14 @@ input:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0
 /* configurações */
 .settings-form { display: flex; flex-direction: column; gap: var(--space-2); max-width: 340px; }
 .ok { color: var(--color-accent-strong); font-size: var(--text-sm); }
+
+/* tags e recorrência */
+.form-section { display: flex; flex-direction: column; gap: var(--space-2); }
+.form-label { font-size: var(--text-sm); color: var(--color-text-muted); }
+.tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.tag-chip { --tag: var(--color-accent); background: none; border: 1px solid var(--tag); color: var(--tag); border-radius: 999px; padding: 2px var(--space-3); font-size: var(--text-sm); }
+.tag-chip.on { background: var(--tag); color: #fff; }
+.tag-new { width: 90px; padding: 2px var(--space-2); font-size: var(--text-sm); border-radius: 999px; }
+.chip.tag { --tag: var(--color-accent); background: color-mix(in srgb, var(--tag) 14%, white); color: var(--tag); }
+label.inline { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+.modal select { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-1) var(--space-2); }

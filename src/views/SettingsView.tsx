@@ -10,6 +10,8 @@ export function SettingsView() {
   const email = useAuthStore((s) => s.session?.user.email);
   const changePassword = useAuthStore((s) => s.changePassword);
   const load = useDataStore((s) => s.load);
+  const tags = useDataStore((s) => s.tags);
+  const removeTag = useDataStore((s) => s.removeTag);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [pwMsg, setPwMsg] = useState<Msg>(null);
@@ -75,6 +77,18 @@ export function SettingsView() {
         <button className="btn" type="submit">Alterar senha</button>
         {pwMsg && <div className={pwMsg.ok ? "ok" : "error"}>{pwMsg.text}</div>}
       </form>
+
+      <div className="day-title">Tags</div>
+      <div className="tag-row">
+        {tags.length === 0 && <span className="empty">Crie tags ao editar uma tarefa.</span>}
+        {tags.map((g) => (
+          <span key={g.id} className="chip tag" style={{ ["--tag" as string]: g.color }}>
+            {g.name}{" "}
+            <button className="del" aria-label={`Excluir tag ${g.name}`}
+              onClick={() => window.confirm(`Excluir a tag "${g.name}"? Ela será removida das tarefas.`) && void removeTag(g.id)}>×</button>
+          </span>
+        ))}
+      </div>
 
       <div className="day-title">Backup</div>
       <div className="settings-form">

@@ -10,6 +10,8 @@ export function TaskRow({ task }: { task: Task }) {
   const projects = useDataStore((s) => s.projects);
 
   const openEditor = useUiStore((s) => s.openEditor);
+  const tags = useDataStore((s) => s.tags);
+  const recurring = useDataStore((s) => s.recurrences.some((r) => r.taskId === task.id));
   const done = task.status === "completed";
   const area = areas.find((a) => a.id === task.areaId);
   const project = projects.find((p) => p.id === task.projectId);
@@ -20,6 +22,10 @@ export function TaskRow({ task }: { task: Task }) {
       <button className={`check${done ? " done" : ""}`} aria-label="Concluir" onClick={() => void toggle(task)} />
       <span className="title" style={{ cursor: "pointer" }} onClick={() => openEditor(task.id)}>{task.title}</span>
       {label && <span className="chip">{label}</span>}
+      {task.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean).map((g) => (
+        <span key={g!.id} className="chip tag" style={{ ["--tag" as string]: g!.color }}>{g!.name}</span>
+      ))}
+      {recurring && <span className="chip" title="Recorrente">↻</span>}
       {task.deadline && <span className="chip">prazo {task.deadline.slice(5).split("-").reverse().join("/")}</span>}
       {!done && (
         <button className={`star${task.isFocus ? " on" : ""}`} aria-label="A Única Coisa" onClick={() => void setFocus(task.isFocus ? null : task.id)}>★</button>

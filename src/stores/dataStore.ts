@@ -6,7 +6,13 @@ import { tagRepository } from "../lib/repository/tagRepository.ts";
 import { taskRepository } from "../lib/repository/taskRepository.ts";
 import { subtaskRepository } from "../lib/repository/subtaskRepository.ts";
 import { noteRepository } from "../lib/repository/noteRepository.ts";
-import type { Area, Note, Project, Subtask, Tag, Task } from "../types.ts";
+import { recurrenceRepository } from "../lib/repository/recurrenceRepository.ts";
+import { addDays } from "../lib/agenda.ts";
+import { todayISO } from "../lib/lenses.ts";
+import { daysBetween, nextOccurrence } from "../lib/recurrence.ts";
+import type { Area, Note, Project, Recurrence, Subtask, Tag, Task } from "../types.ts";
+
+export const TAG_COLORS = ["#2F6D64", "#B4423A", "#5B7C99", "#C98A1A", "#7A5C8E", "#6B7F7B"];
 
 /**
  * Cada array é exposto CRU. Nunca filtre dentro do seletor
@@ -22,6 +28,7 @@ interface DataState {
   areas: Area[];
   tags: Tag[];
   notes: Note[];
+  recurrences: Recurrence[];
   load: () => Promise<void>;
   subscribe: () => () => void;
   addTask: (input: Partial<Task> & { title: string }) => Promise<void>;
@@ -34,6 +41,9 @@ interface DataState {
   addNote: (areaId: string | null) => Promise<Note>;
   updateNote: (id: string, body: string) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
+  addTag: (name: string) => Promise<Tag | null>;
+  removeTag: (id: string) => Promise<void>;
+  setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<void>;
 }
 
 const guard = async (set: (p: Partial<DataState>) => void, fn: () => Promise<void>) => {
@@ -54,14 +64,15 @@ export const useDataStore = create<DataState>((set, get) => ({
   areas: [],
   tags: [],
   notes: [],
+  recurrences: [],
 
   load: async () => {
     await guard(set, async () => {
-      const [tasks, subtasks, projects, areas, tags, notes] = await Promise.all([
+      const [tasks, subtasks, projects, areas, tags, notes, recurrences] = await Promise.all([
         taskRepository.list(), subtaskRepository.list(), projectRepository.list(),
-        areaRepository.list(), tagRepository.list(), noteRepository.list(),
+        areaRepository.list(), tagRepository.list(), noteRepository.list(), recurrenceRepository.list(),
       ]);
-      set({ tasks, subtasks, projects, areas, tags, notes, loaded: true });
+      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, loaded: true });
     });
   },
 
@@ -80,8 +91,14 @@ export const useDataStore = create<DataState>((set, get) => ({
   }),
 
   updateTask: (id, patch) => guard(set, async () => {
+    const prev = get().tasks.find((t) => t.id === id);
     set({ tasks: get().tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) });
     await taskRepository.update(id, patch);
+    // Concluir uma tarefa recorrente gera a próxima ocorrência.
+    if (prev && prev.status !== "completed" && patch.status === "completed") {
+      const rec = get().recurrences.find((r) => r.taskId === id);
+      if (rec) await spawnNext({ ...prev, ...patch }, rec, set, get);
+    }
   }),
 
   toggleComplete: async (task) => {
@@ -129,4 +146,65 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({ notes: get().notes.filter((n) => n.id !== id) });
     await noteRepository.remove(id);
   }),
+
+  addTag: async (name) => {
+    const clean = name.trim();
+    if (!clean) return null;
+    const existing = get().tags.find((t) => t.name.toLowerCase() === clean.toLowerCase());
+    if (existing) return existing;
+    let created: Tag | null = null;
+    await guard(set, async () => {
+      created = await tagRepository.create({ name: clean, color: TAG_COLORS[get().tags.length % TAG_COLORS.length] });
+      set({ tags: [...get().tags, created] });
+    });
+    return created;
+  },
+
+  removeTag: (id) => guard(set, async () => {
+    await tagRepository.remove(id);
+    set({
+      tags: get().tags.filter((t) => t.id !== id),
+      tasks: get().tasks.map((t) => ({ ...t, tagIds: t.tagIds.filter((x) => x !== id) })),
+    });
+  }),
+
+  setRecurrence: (taskId, rec) => guard(set, async () => {
+    for (const old of get().recurrences.filter((r) => r.taskId === taskId)) await recurrenceRepository.remove(old.id);
+    let kept = get().recurrences.filter((r) => r.taskId !== taskId);
+    if (rec) {
+      const task = get().tasks.find((t) => t.id === taskId);
+      const base = task?.whenDate ?? todayISO();
+      const created = await recurrenceRepository.create({ ...rec, taskId, nextDate: nextOccurrence(rec, base) });
+      kept = [...kept, created];
+    }
+    set({ recurrences: kept });
+  }),
 }));
+
+async function spawnNext(
+  task: Task,
+  rec: Recurrence,
+  set: (p: Partial<DataState>) => void,
+  get: () => DataState,
+) {
+  const base = task.whenDate ?? todayISO();
+  const next = nextOccurrence(rec, base);
+  const delta = daysBetween(base, next);
+  const created = await taskRepository.create({
+    title: task.title, notes: task.notes, when: "date", whenDate: next,
+    deadline: task.deadline ? addDays(task.deadline, delta) : null,
+    priority: task.priority, type: task.type, amount: task.amount, category: task.category,
+    projectId: task.projectId, areaId: task.areaId, tagIds: task.tagIds,
+    startTime: task.startTime, durationMinutes: task.durationMinutes,
+    boardStage: "todo", sortOrder: task.sortOrder,
+  });
+  await recurrenceRepository.remove(rec.id);
+  const newRec = await recurrenceRepository.create({
+    taskId: created.id, type: rec.type, interval: rec.interval, weekdays: rec.weekdays,
+    nextDate: nextOccurrence(rec, next),
+  });
+  set({
+    tasks: [...get().tasks, created],
+    recurrences: [...get().recurrences.filter((r) => r.id !== rec.id), newRec],
+  });
+}
