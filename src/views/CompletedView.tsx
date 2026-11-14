@@ -12,7 +12,7 @@ export function CompletedView() {
       {groups.map(([day, list]) => (
         <section key={day}>
           <div className="day-title">{day.split("-").reverse().join("/")}</div>
-          {list.map((t) => <TaskRow key={t.id} task={t} />)}
+          <div className="list-card">{list.map((t) => <TaskRow key={t.id} task={t} />)}</div>
         </section>
       ))}
     </>

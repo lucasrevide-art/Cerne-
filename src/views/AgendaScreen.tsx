@@ -47,7 +47,7 @@ function AgendaList({ tasks }: { tasks: Task[] }) {
       {groups.map((g) => (
         <section key={g.day} className={`dash-section${g.day === "overdue" ? " overdue" : ""}`}>
           <div className="dash-title"><span>{label(g.day)}</span><span className="count">{g.tasks.length}</span></div>
-          {g.tasks.map((t) => <TaskRow key={t.id} task={t} />)}
+          <div className="list-card">{g.tasks.map((t) => <TaskRow key={t.id} task={t} />)}</div>
         </section>
       ))}
     </>

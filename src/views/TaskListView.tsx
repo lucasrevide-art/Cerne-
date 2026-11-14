@@ -15,7 +15,7 @@ export function TaskListView({ title, tasks, defaults, readOnly, emptyText = "Ne
     <>
       {title && <h2>{title}</h2>}
       {defaults && <QuickAdd label="Título da nova tarefa" submit={(name) => addTask({ ...defaults, title: name })} />}
-      {tasks.length === 0 ? <p className="empty">{emptyText}</p> : tasks.map((t) => <TaskRow key={t.id} task={t} readOnly={readOnly} />)}
+      {tasks.length === 0 ? <p className="empty">{emptyText}</p> : <div className="list-card">{tasks.map((t) => <TaskRow key={t.id} task={t} readOnly={readOnly} />)}</div>}
     </>
   );
 }

@@ -520,3 +520,153 @@ input:focus, textarea:focus, select:focus { border-color: var(--ring); box-shado
 
 .workspace-sections { margin-top: var(--space-4); }
 .main > .notice + .workspace-sections { margin-top: 0; }
+
+/* ==========================================================================
+   Padrão visual Ant Design
+   Camada final: ajusta formas, alturas e estados dos componentes ao Ant
+   (controle 32px, raio 6px, azul primário, cinzas neutros). As cores vêm
+   dos tokens em tokens.css (claro e escuro).
+   ========================================================================== */
+body { font-size: var(--text-md); background: var(--color-bg); }
+h1, h2, h3 { color: var(--foreground); font-weight: 600; }
+.main h2, .portal h2 { font-size: var(--text-xl); line-height: 1.35; margin-bottom: var(--space-4); }
+.inbox-head h2 { font-size: var(--text-xl); letter-spacing: 0; }
+.inbox-head h2, .agenda-bar h2, .page-head h2 { margin-top: 0; }
+.day-title, .form-label { font-weight: 400; }
+
+/* Botões: padrão (borda), primário, texto, perigo */
+.btn { min-height: var(--control-h); padding: 4px 15px; font-size: 14px; line-height: 22px; font-weight: 400;
+  border-radius: var(--radius); transition: all 200ms var(--ease); }
+.btn:not(.outline, .ghost, .secondary, .destructive) { background: var(--primary); color: var(--primary-foreground); box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1); }
+.btn:not(.outline, .ghost, .secondary, .destructive):hover:not(:disabled) { background: var(--primary-hover); }
+.btn:not(.outline, .ghost, .secondary, .destructive):active:not(:disabled) { background: var(--primary-active); }
+.btn.outline, .btn.secondary { background: var(--color-field); color: var(--foreground); border-color: var(--input); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02); }
+.btn.outline:hover:not(:disabled), .btn.secondary:hover:not(:disabled) { background: var(--color-field); color: var(--primary-hover); border-color: var(--primary-hover); }
+.btn.outline:active:not(:disabled), .btn.secondary:active:not(:disabled) { color: var(--primary-active); border-color: var(--primary-active); }
+.btn.ghost { background: transparent; color: var(--foreground); border-color: transparent; }
+.btn.ghost:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
+.btn.destructive { background: var(--destructive); color: var(--destructive-foreground); box-shadow: 0 2px 0 rgba(255, 38, 5, 0.06); }
+.btn.destructive:hover:not(:disabled) { background: var(--destructive-hover); }
+.btn.small { min-height: var(--control-h-sm); padding: 0 7px; font-size: 14px; line-height: 22px; border-radius: var(--radius-sm); }
+.btn.large { min-height: var(--control-h-lg); padding: 6.5px 15px; font-size: 16px; }
+.btn.icon { min-width: var(--control-h); min-height: var(--control-h); padding: 0; }
+.btn:disabled { background: var(--muted); color: rgba(128, 128, 128, 0.7); border-color: var(--input); box-shadow: none; opacity: 1; cursor: not-allowed; }
+.btn.ghost:disabled { background: transparent; border-color: transparent; }
+button:disabled { opacity: 1; }
+.btn.ghost.danger, .danger { color: var(--destructive) !important; }
+
+/* Campos */
+input:not([type="checkbox"], [type="radio"]), select, .select-trigger { min-height: var(--control-h); padding: 4px 11px; font-size: 14px; line-height: 22px;
+  background: var(--color-field); border: 1px solid var(--input); border-radius: var(--radius); transition: border-color 200ms, box-shadow 200ms; }
+textarea { padding: 4px 11px; background: var(--color-field); border: 1px solid var(--input); border-radius: var(--radius); line-height: 22px; }
+input:not([type="checkbox"], [type="radio"]):hover, select:hover, textarea:hover, .select-trigger:hover { border-color: var(--primary-hover); }
+input:focus, textarea:focus, select:focus, .select-trigger:focus-visible, .select-trigger[data-state="open"] { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1); outline: none; }
+input::placeholder, textarea::placeholder { color: rgba(128, 128, 128, 0.75); }
+:where(button, summary, a):focus-visible { outline: 2px solid rgba(5, 145, 255, 0.5); outline-offset: 1px; }
+.inbox-page > .quick-add > input { min-height: var(--control-h-lg); font-size: 16px; }
+.form-grid label, .stack > label:not(.inline, .switch-label), .modal > label, .auth label, .settings-form label { font-weight: 400; }
+@media (max-width: 680px) { .select-trigger, input:not([type="checkbox"], [type="radio"]), select { min-height: 40px; } }
+
+/* Checkbox das tarefas (quadrado azul com marca, como o Ant) */
+.task .check, .check.small { width: 16px; height: 16px; border-radius: var(--radius-sm); border: 1px solid var(--input); background: var(--color-field); transition: all 200ms; }
+.task .check:hover:not(:disabled), .check.small:hover:not(:disabled) { border-color: var(--primary); }
+.task .check.done, .sub-row .check.done, .check.small.done { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.check svg { width: 12px; height: 12px; }
+
+/* Menu lateral: itens de 40px, selecionado em azul claro */
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: var(--space-3) var(--space-2); gap: 4px; }
+.sidebar h1 { font-size: 20px; font-weight: 600; letter-spacing: 0; color: var(--foreground); padding: 0 var(--space-3); margin: var(--space-2) 0 var(--space-4); }
+.nav-item { min-height: 40px; padding: 0 var(--space-3); border-radius: var(--radius); font-weight: 400; color: var(--foreground); transition: background 200ms, color 200ms; }
+.nav-item:hover { background: var(--muted); color: var(--foreground); }
+.nav-item.active { background: var(--color-accent-soft); color: var(--primary); font-weight: 500; }
+:root[data-theme="dark"] .nav-item.active { color: var(--color-accent-strong); }
+.nav-item.sub, .sidebar-project { min-height: 36px; font-size: 14px; border-left: 0; border-radius: var(--radius); color: var(--muted-foreground); }
+.nav-item.sub.active { color: var(--primary); }
+.sidebar .group-title { text-transform: none; letter-spacing: 0; font-size: 12px; color: rgba(128, 128, 128, 0.9); padding: 0 var(--space-3); }
+.search-link { background: var(--muted); border-color: transparent; }
+.sidebar .profile-trigger { border-top: 1px solid var(--border); }
+
+/* Segmented */
+.seg { min-height: 32px; padding: 2px; gap: 0; background: var(--muted); border-radius: var(--radius); }
+.seg button { min-height: 28px; padding: 0 11px; border-radius: var(--radius-sm); font-weight: 400; color: var(--muted-foreground); transition: all 200ms var(--ease); }
+.seg button:hover { color: var(--foreground); }
+.seg button:is(.on, [data-state="active"], [aria-pressed="true"]) { background: var(--card); color: var(--foreground); font-weight: 500; box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 4px -1px rgba(0, 0, 0, 0.07), 0 0 1px 0 rgba(0, 0, 0, 0.08); }
+:root[data-theme="dark"] .seg button:is(.on, [data-state="active"], [aria-pressed="true"]) { background: #1f1f1f; }
+
+/* Cartões e listas em superfície branca sobre o fundo cinza */
+.list-card, .overview > section, .inbox-section, .month-calendar, .month-day, .settings-trash, .settings-card, .portal-section, .portal-detail, .cal, .note-card, .project-card, .access-entry, .activity-event {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: none;
+}
+.list-card { overflow: hidden; margin-bottom: var(--space-4); }
+.list-card > .task:last-child { border-bottom: 0; }
+.task { background: var(--card); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); transition: background 200ms; }
+.task:hover { background: var(--muted); }
+.main > .task { border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: var(--space-2); }
+.task .title, .task-title { font-weight: 400; color: var(--foreground); }
+.task-brief .task-title { font-weight: 500; }
+.task-summary { background: transparent; }
+.task-summary:hover { background: var(--muted); }
+button.project-card:hover, .note-card:hover { border-color: var(--primary-hover); box-shadow: var(--shadow-sm); }
+.project-card { border-left: 1px solid var(--border); }
+.inbox-section > header { padding: var(--space-3) var(--space-4); }
+.inbox-section h3, .settings-card h3 { font-size: 16px; font-weight: 600; }
+.focus-card { background: var(--card); border: 1px solid var(--warning-border); border-radius: var(--radius-lg); }
+.dash-title { border-bottom-width: 1px; }
+
+/* Tags e etiquetas (Ant Tag) */
+.chip, .task .chip, .card-meta .chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; font-size: 12px; line-height: 20px;
+  color: var(--foreground); background: var(--muted); border: 1px solid var(--input); border-radius: var(--radius-sm); }
+.chip.tag { color: color-mix(in srgb, var(--tag) 80%, var(--foreground)); background: color-mix(in srgb, var(--tag) 10%, var(--card)); border-color: color-mix(in srgb, var(--tag) 35%, var(--card)); }
+.chip.prio { color: var(--destructive); background: var(--error-bg); border-color: var(--error-border); font-weight: 400; }
+.tag-chip { height: 24px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--input); color: var(--foreground); background: var(--color-field); font-size: 12px; transition: all 200ms; }
+.tag-chip:hover { color: var(--primary-hover); border-color: var(--primary-hover); }
+.tag-chip.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.inbox-count { background: var(--muted); color: var(--muted-foreground); border-radius: 10px; min-width: 20px; padding: 0 6px; line-height: 20px; }
+.nav-item .count, .nav-item .inbox-count { background: transparent; }
+.inbox-overdue .inbox-count { background: var(--error-bg); color: var(--destructive); }
+
+/* Quadro Kanban */
+.board-col { background: var(--muted); border: 0; border-radius: var(--radius-lg); padding: var(--space-3); }
+.board-col.over { background: var(--color-accent-soft); outline: 1px dashed var(--primary); }
+.board-head h3 { font-size: 14px; font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: var(--space-3); }
+.card:hover { border-color: var(--primary-hover); box-shadow: var(--shadow-md); }
+
+/* Agenda e calendário */
+.cal, .month-calendar { overflow: hidden; }
+.cal-head > div.today, .month-cell.today .month-date { color: var(--primary); }
+.cal-head > div.today { font-weight: 600; }
+.month-cell { border-radius: 0; border: 0; border-top: 1px solid var(--border); background: var(--card); }
+.month-cell.out { background: transparent; }
+.month-cell.sel { background: var(--color-accent-soft); box-shadow: inset 0 0 0 1px var(--primary); }
+.month-cell.today .month-date { background: var(--primary); color: var(--primary-foreground); border-radius: var(--radius-sm); }
+.month-item-title, .cal-allday .pill { background: var(--color-accent-soft); color: var(--color-accent-strong); border-radius: var(--radius-sm); }
+.block { background: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--card); }
+.now-line { background: var(--destructive); }
+
+/* Janelas, menus e avisos */
+.modal { border: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: 20px 24px; }
+.dialog-title { font-size: 16px; line-height: 24px; font-weight: 600; }
+.ui-menu { border: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: 4px; }
+.ui-menu-item { min-height: 32px; border-radius: var(--radius-sm); padding: 5px 12px; }
+.ui-menu-item[data-highlighted] { background: var(--muted); }
+.ui-menu-item[data-destructive] { color: var(--destructive); }
+.pal-item.on { background: var(--color-accent-soft); color: var(--color-accent-strong); }
+.notice { border-radius: var(--radius-lg); padding: 8px 12px; border: 1px solid var(--border); }
+.notice[data-tone="info"] { background: var(--info-bg); border-color: var(--info-border); color: var(--foreground); }
+.ui-switch { height: 22px; width: 44px; background: rgba(128, 128, 128, 0.4); border: 0; }
+.ui-switch[data-state="checked"] { background: var(--primary); }
+.ui-switch-thumb { width: 18px; height: 18px; margin: 2px; background: #fff; transition: transform 200ms var(--ease); }
+.ui-switch[data-state="checked"] .ui-switch-thumb { transform: translateX(22px); }
+.link-btn, .formatted-note a, .day-options summary { color: var(--primary); }
+.link-btn:hover { color: var(--primary-hover); }
+
+/* Widgets flutuantes */
+.pomo-pill { background: var(--primary); }
+.pomo-pill.break { background: var(--color-break); }
+.voice-btn { background: var(--card); border-color: var(--input); }
+
+/* Linhas de tarefa: etiquetas quebram de linha em vez de sobrepor o título */
+.task { flex-wrap: wrap; row-gap: var(--space-1); }
+.task-identity { flex: 1 1 160px; min-width: 0; }
+.task .task-title { min-width: 0; overflow-wrap: anywhere; }
