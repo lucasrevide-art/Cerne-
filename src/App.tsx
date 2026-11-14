@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
-import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
-import { VoiceButton } from "./components/VoiceButton.tsx";
-import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
-import type { SimpleView, View } from "./lib/nav.ts";
 import { AuthScreen } from "./components/AuthScreen.tsx";
-import { AgendaView } from "./views/AgendaView.tsx";
-import { BoardView } from "./views/BoardView.tsx";
-import { BoardScreen } from "./views/BoardScreen.tsx";
-import { useUiStore } from "./stores/uiStore.ts";
+import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
+import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
 import { TaskEditor } from "./components/TaskEditor.tsx";
-import { UpcomingView } from "./views/UpcomingView.tsx";
-import { NotesSection } from "./views/NotesSection.tsx";
-import { SettingsView } from "./views/SettingsView.tsx";
-import { CompletedView } from "./views/CompletedView.tsx";
-import { TaskListView } from "./views/TaskListView.tsx";
-import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
+import { VoiceButton } from "./components/VoiceButton.tsx";
+import { dashboard } from "./lib/dashboard.ts";
+import { todayISO } from "./lib/lenses.ts";
+import type { SimpleView, View } from "./lib/nav.ts";
 import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
+import { useUiStore } from "./stores/uiStore.ts";
+import { AgendaScreen } from "./views/AgendaScreen.tsx";
+import { AreaView, ProjectView } from "./views/AreaProjectViews.tsx";
+import { CompletedView } from "./views/CompletedView.tsx";
+import { InboxView } from "./views/InboxView.tsx";
+import { SettingsView } from "./views/SettingsView.tsx";
 
 export function App() {
   const { session, ready, init, signOut } = useAuthStore();
@@ -28,12 +26,11 @@ export function App() {
   const projects = useDataStore((s) => s.projects);
   const error = useDataStore((s) => s.error);
   const addArea = useDataStore((s) => s.addArea);
-  const addProject = useDataStore((s) => s.addProject);
-  const [view, setView] = useState<View>({ kind: "today" });
-  const [newArea, setNewArea] = useState("");
-  const [mode, setMode] = useState<"list" | "board">("board");
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const [view, setView] = useState<View>({ kind: "inbox" });
+  const [newArea, setNewArea] = useState("");
+  const [mode, setMode] = useState<"list" | "board">("board");
 
   useShortcuts(setView);
   useEffect(() => init(), [init]);
@@ -51,110 +48,57 @@ export function App() {
   if (!ready) return null;
   if (!session) return <AuthScreen />;
 
-  const now = todayISO();
-  const lists = { inbox: inbox(tasks), today: today(tasks, now), focus: focus(tasks), waiting: waiting(tasks) };
+  const attention = dashboard(tasks, todayISO()).reduce((n, s) => n + s.tasks.length, 0);
   const nav = (kind: SimpleView, label: string, count?: number) => (
     <button className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => setView({ kind })}>
       <span>{label}</span>{count ? <span className="count">{count}</span> : null}
     </button>
   );
-
-  const modeToggle = (
-    <div className="seg view-toggle">
-      <button className={mode === "board" ? "on" : ""} onClick={() => setMode("board")}>Quadro</button>
-      <button className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>Lista</button>
-    </div>
+  const common = { go: setView, mode, setMode };
+  const wide = view.kind === "agenda" || ((view.kind === "project" || view.kind === "area") && mode === "board");
+  // Projetos antigos sem área continuam acessíveis.
+  const orphans = projects.filter((p) => p.status === "active" && !areas.some((a) => a.id === p.areaId));
+  const projectButton = (p: { id: string; name: string }) => (
+    <button
+      key={p.id}
+      className={`nav-item sub${view.kind === "project" && view.id === p.id ? " active" : ""}`}
+      onClick={() => setView({ kind: "project", id: p.id })}
+    >{p.name}</button>
   );
-  const wide = view.kind === "agenda" || view.kind === "board"
-    || ((view.kind === "project" || view.kind === "area") && mode === "board");
 
   let content;
   switch (view.kind) {
-    case "inbox":
-      content = <TaskListView title="Inbox" tasks={lists.inbox} defaults={{}} />;
-      break;
-    case "today":
-      content = <TaskListView title="Hoje" tasks={lists.today} defaults={{ when: "today" }} emptyText="Dia livre." />;
-      break;
-    case "focus":
-      content = <TaskListView title="A Única Coisa" tasks={lists.focus} emptyText="Marque uma tarefa com a estrela ★ para focar nela." />;
-      break;
-    case "waiting":
-      content = <TaskListView title="Aguardando" tasks={lists.waiting} />;
-      break;
-    case "board":
-      content = <BoardScreen />;
-      break;
-    case "settings":
-      content = <SettingsView />;
-      break;
-    case "upcoming":
-      content = <UpcomingView />;
-      break;
-    case "agenda":
-      content = <AgendaView />;
-      break;
-    case "completed":
-      content = <CompletedView />;
-      break;
-    case "area": {
-      const area = areas.find((a) => a.id === view.id);
-      const own = tasks.filter((t) => t.areaId === view.id && !t.projectId && t.status === "open");
-      content = (
-        <>
-          {modeToggle}
-          {mode === "list"
-            ? <TaskListView title={area?.name ?? "Área"} tasks={own} defaults={{ areaId: view.id }} />
-            : <><h2>{area?.name ?? "Área"}</h2><BoardView scope={{ kind: "area", id: view.id }} /></>}
-          <NotesSection areaId={view.id} key={view.id} />
-          <div className="day-title">Projetos</div>
-          {projects.filter((p) => p.areaId === view.id).map((p) => (
-            <button key={p.id} className="nav-item" onClick={() => setView({ kind: "project", id: p.id })}>{p.name}</button>
-          ))}
-          <form className="quick-add" onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            const name = String(f.get("name") ?? "").trim();
-            if (name) void addProject(name, view.id);
-            e.currentTarget.reset();
-          }}>
-            <input name="name" placeholder="Novo projeto…" /><button className="btn ghost" type="submit">Criar</button>
-          </form>
-        </>
-      );
-      break;
-    }
-    case "project": {
-      const p = projects.find((x) => x.id === view.id);
-      const own = tasks.filter((t) => t.projectId === view.id && t.status === "open");
-      content = (
-        <>
-          {modeToggle}
-          {mode === "list"
-            ? <TaskListView title={p?.name ?? "Projeto"} tasks={own} defaults={{ projectId: view.id, areaId: p?.areaId ?? null }} />
-            : <><h2>{p?.name ?? "Projeto"}</h2><BoardView scope={{ kind: "project", id: view.id }} /></>}
-        </>
-      );
-      break;
-    }
+    case "inbox": content = <InboxView />; break;
+    case "agenda": content = <AgendaScreen />; break;
+    case "completed": content = <CompletedView />; break;
+    case "settings": content = <SettingsView />; break;
+    case "area": content = <AreaView id={view.id} {...common} />; break;
+    case "project": content = <ProjectView id={view.id} {...common} />; break;
   }
 
   return (
     <div className="layout">
       <aside className="sidebar">
         <h1>Cerne</h1>
-        {nav("inbox", "Inbox", lists.inbox.length)}
-        {nav("today", "Hoje", lists.today.length)}
-        {nav("board", "Quadro")}
-        {nav("focus", "A Única Coisa", lists.focus.length)}
-        {nav("waiting", "Aguardando", lists.waiting.length)}
-        {nav("upcoming", "Próximas")}
+        {nav("inbox", "Inbox", attention)}
         {nav("agenda", "Agenda")}
         {nav("completed", "Concluídas")}
         <div className="group-title">Áreas</div>
         {areas.map((a) => (
-          <button key={a.id} className={`nav-item${view.kind === "area" && view.id === a.id ? " active" : ""}`} onClick={() => setView({ kind: "area", id: a.id })}>{a.name}</button>
+          <div key={a.id} className="area-group">
+            <button
+              className={`nav-item${view.kind === "area" && view.id === a.id ? " active" : ""}`}
+              onClick={() => setView({ kind: "area", id: a.id })}
+            >{a.name}</button>
+            {projects.filter((p) => p.areaId === a.id && p.status === "active").map(projectButton)}
+          </div>
         ))}
+        {orphans.length > 0 && (
+          <div className="area-group">
+            <div className="nav-item muted">Sem área</div>
+            {orphans.map(projectButton)}
+          </div>
+        )}
         <form className="inline-add" onSubmit={(e) => { e.preventDefault(); if (newArea.trim()) void addArea(newArea.trim()); setNewArea(""); }}>
           <input placeholder="Nova área…" value={newArea} onChange={(e) => setNewArea(e.target.value)} />
         </form>

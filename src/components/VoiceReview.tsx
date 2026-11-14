@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { projectsForArea } from "../lib/dashboard.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import type { VoiceDraft } from "../lib/voice.ts";
 
@@ -47,13 +48,21 @@ export function VoiceReview({ draft: initial, onClose }: { draft: VoiceDraft; on
           <label>Horário<input type="time" step={900} value={d.time ?? ""} onChange={(e) => set("time", e.target.value || null)} /></label>
           <label>Duração (min)<input type="number" min={15} step={15} disabled={!d.time} value={d.durationMinutes ?? 60} onChange={(e) => set("durationMinutes", Number(e.target.value))} /></label>
           <label>Área
-            <select value={d.areaId ?? ""} onChange={(e) => set("areaId", e.target.value || null)}>
+            <select
+              value={d.areaId ?? ""}
+              onChange={(e) => {
+                const areaId = e.target.value || null;
+                const keep = projects.find((p) => p.id === d.projectId)?.areaId === areaId;
+                setD((x) => ({ ...x, areaId, projectId: keep ? x.projectId : null }));
+              }}
+            >
               <option value="">—</option>{areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
           <label>Projeto
-            <select value={d.projectId ?? ""} onChange={(e) => set("projectId", e.target.value || null)}>
-              <option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <select value={d.projectId ?? ""} disabled={!d.areaId && !d.projectId} onChange={(e) => set("projectId", e.target.value || null)}>
+              <option value="">{d.areaId ? "—" : "Escolha uma área"}</option>
+              {projectsForArea(projects, d.areaId, d.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           <label className="inline" style={{ alignSelf: "end" }}>

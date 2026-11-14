@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { progress } from "../lib/subtasks.ts";
 import {
-  LEGACY_COLUMNS, boardTasks, byColumn, canRemoveColumn, dropOrder, movePatch, sortColumns,
+  LEGACY_COLUMNS, boardTasks, byColumn, dropOrder, movePatch, sortColumns,
   type BoardScope, type ColumnDef,
 } from "../lib/board.ts";
 import { shortDate } from "../lib/format.ts";
@@ -10,8 +10,8 @@ import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
 
 /**
- * Quadro Kanban. Com a migração de colunas rodada, as colunas são do usuário
- * (criar, renomear, reordenar, excluir); sem ela, usa as 4 colunas fixas.
+ * Quadro Kanban, estável no uso diário: aqui só se movem e criam cartões.
+ * As colunas são administradas em Configurações (ColumnManager).
  */
 export function BoardView({ scope }: { scope: BoardScope }) {
   const allTasks = useDataStore((s) => s.tasks);
@@ -24,17 +24,11 @@ export function BoardView({ scope }: { scope: BoardScope }) {
   const addTask = useDataStore((s) => s.addTask);
   const updateTask = useDataStore((s) => s.updateTask);
   const setFocus = useDataStore((s) => s.setFocus);
-  const addColumn = useDataStore((s) => s.addColumn);
-  const renameColumn = useDataStore((s) => s.renameColumn);
-  const moveColumn = useDataStore((s) => s.moveColumn);
-  const removeColumn = useDataStore((s) => s.removeColumn);
   const openEditor = useUiStore((s) => s.openEditor);
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
-  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
-  const [newColumn, setNewColumn] = useState("");
 
   const columns: ColumnDef[] = custom ? sortColumns(userColumns) : LEGACY_COLUMNS;
   const tasks = boardTasks(allTasks, scope);
@@ -63,20 +57,6 @@ export function BoardView({ scope }: { scope: BoardScope }) {
     const place: Partial<Task> = custom ? { columnId: c.id } : { boardStage: c.id as Task["boardStage"] };
     void addTask({ title, ...home, ...place, sortOrder });
     setDrafts({ ...drafts, [c.id]: "" });
-  };
-
-  const commitRename = () => {
-    if (renaming && renaming.name.trim()) void renameColumn(renaming.id, renaming.name);
-    setRenaming(null);
-  };
-
-  const remove = (c: ColumnDef) => {
-    const n = allTasks.filter((t) => t.columnId === c.id && t.status !== "completed" && t.status !== "canceled").length;
-    const first = columns.find((x) => !x.isDone && x.id !== c.id)?.name;
-    const msg = n > 0
-      ? `Excluir a coluna "${c.name}"? ${n === 1 ? "O cartão dela vai" : `Os ${n} cartões dela vão`} para "${first}".`
-      : `Excluir a coluna "${c.name}"?`;
-    if (window.confirm(msg)) void removeColumn(c.id);
   };
 
   const card = (t: Task, column: ColumnDef) => {
@@ -116,7 +96,7 @@ export function BoardView({ scope }: { scope: BoardScope }) {
 
   return (
     <div className="board">
-      {columns.map((c, i) => (
+      {columns.map((c) => (
         <div
           key={c.id}
           className={`board-col${over === c.id ? " over" : ""}`}
@@ -125,34 +105,8 @@ export function BoardView({ scope }: { scope: BoardScope }) {
           onDrop={(e) => { e.preventDefault(); drop(c, null); }}
         >
           <div className="board-head">
-            {renaming?.id === c.id ? (
-              <input
-                autoFocus
-                className="board-rename"
-                value={renaming.name}
-                onChange={(e) => setRenaming({ id: c.id, name: e.target.value })}
-                onBlur={commitRename}
-                onKeyDown={(e) => { if (e.key === "Enter") commitRename(); else if (e.key === "Escape") setRenaming(null); }}
-              />
-            ) : (
-              <h3
-                title={custom ? "Clique para renomear" : undefined}
-                onClick={() => custom && setRenaming({ id: c.id, name: c.name })}
-                className={custom ? "editable" : ""}
-              >
-                {c.name}{c.isDone && <span className="done-mark" title="Soltar aqui conclui a tarefa"> ✓</span>}
-              </h3>
-            )}
+            <h3>{c.name}{c.isDone && <span className="done-mark" title="Soltar aqui conclui a tarefa"> ✓</span>}</h3>
             <span className="count">{(cols[c.id] ?? []).length}</span>
-            {custom && renaming?.id !== c.id && (
-              <span className="board-tools">
-                <button aria-label={`Mover ${c.name} para a esquerda`} disabled={i === 0} onClick={() => void moveColumn(c.id, -1)}>‹</button>
-                <button aria-label={`Mover ${c.name} para a direita`} disabled={i === columns.length - 1} onClick={() => void moveColumn(c.id, 1)}>›</button>
-                {canRemoveColumn(columns, c.id) && (
-                  <button aria-label={`Excluir coluna ${c.name}`} onClick={() => remove(c)}>×</button>
-                )}
-              </span>
-            )}
           </div>
           <div className="board-cards">{(cols[c.id] ?? []).map((t) => card(t, c))}</div>
           {!c.isDone && (
@@ -166,14 +120,6 @@ export function BoardView({ scope }: { scope: BoardScope }) {
           )}
         </div>
       ))}
-      {custom && (
-        <form
-          className="board-col board-new"
-          onSubmit={(e) => { e.preventDefault(); void addColumn(newColumn); setNewColumn(""); }}
-        >
-          <input placeholder="+ Adicionar coluna" value={newColumn} onChange={(e) => setNewColumn(e.target.value)} />
-        </form>
-      )}
     </div>
   );
 }

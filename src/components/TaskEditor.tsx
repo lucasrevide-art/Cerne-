@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { todayISO } from "../lib/lenses.ts";
+import { projectsForArea } from "../lib/dashboard.ts";
 import { forTask } from "../lib/subtasks.ts";
 import { describe } from "../lib/recurrence.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -61,6 +62,7 @@ export function TaskEditor() {
       startTime: draft.startTime,
       durationMinutes: draft.startTime ? draft.durationMinutes ?? 60 : null,
       status: draft.status,
+      priority: draft.priority,
       // Mesma regra de toggleComplete/movePatch: concluir carimba, reabrir limpa, foco sai.
       ...(nowCompleted && !wasCompleted ? { completedAt: new Date().toISOString(), isFocus: false } : {}),
       ...(!nowCompleted && wasCompleted ? { completedAt: null } : {}),
@@ -94,14 +96,29 @@ export function TaskEditor() {
               <option value="completed">Concluída</option><option value="canceled">Cancelada</option>
             </select>
           </label>
+          <label>Prioridade
+            <select value={draft.priority} onChange={(e) => set("priority", Number(e.target.value) as Task["priority"])}>
+              <option value={0}>Normal</option><option value={1}>Baixa</option>
+              <option value={2}>Alta</option><option value={3}>Urgente</option>
+            </select>
+          </label>
           <label>Área
-            <select value={draft.areaId ?? ""} onChange={(e) => set("areaId", e.target.value || null)}>
+            <select
+              value={draft.areaId ?? ""}
+              onChange={(e) => {
+                const areaId = e.target.value || null;
+                // Trocar de área solta o projeto que não pertence a ela.
+                const keep = projects.find((p) => p.id === draft.projectId)?.areaId === areaId;
+                setDraft({ ...draft, areaId, projectId: keep ? draft.projectId : null });
+              }}
+            >
               <option value="">—</option>{areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
           <label>Projeto
-            <select value={draft.projectId ?? ""} onChange={(e) => set("projectId", e.target.value || null)}>
-              <option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <select value={draft.projectId ?? ""} disabled={!draft.areaId && !draft.projectId} onChange={(e) => set("projectId", e.target.value || null)}>
+              <option value="">{draft.areaId ? "—" : "Escolha uma área"}</option>
+              {projectsForArea(projects, draft.areaId, draft.projectId).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
         </div>

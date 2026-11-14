@@ -30,3 +30,20 @@ export const tasksByDay = (tasks: Task[]): Map<string, Task[]> => {
   }
   return map;
 };
+
+/** Agenda em lista: grupo "atrasadas" primeiro, depois cada dia a partir de hoje. */
+export function agendaList(tasks: Task[], now: string): { day: string | "overdue"; tasks: Task[] }[] {
+  const byDay = tasksByDay(tasks);
+  const overdue: Task[] = [];
+  const days: { day: string; tasks: Task[] }[] = [];
+  for (const day of [...byDay.keys()].sort()) {
+    if (day < now) {
+      // Só conta como atrasada se não tiver também uma data de hoje em diante.
+      for (const t of byDay.get(day)!) {
+        const future = [t.whenDate, t.deadline].some((d) => d !== null && d >= now);
+        if (!future && !overdue.includes(t)) overdue.push(t);
+      }
+    } else days.push({ day, tasks: byDay.get(day)! });
+  }
+  return [...(overdue.length ? [{ day: "overdue" as const, tasks: overdue }] : []), ...days];
+}

@@ -17,7 +17,7 @@ export function TaskListView({ title, tasks, defaults, emptyText = "Nada por aqu
 
   return (
     <>
-      <h2>{title}</h2>
+      {title && <h2>{title}</h2>}
       {defaults && (
         <form
           className="quick-add"

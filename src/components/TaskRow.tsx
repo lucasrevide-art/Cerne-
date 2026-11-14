@@ -19,13 +19,15 @@ export function TaskRow({ task }: { task: Task }) {
   const done = task.status === "completed";
   const area = areas.find((a) => a.id === task.areaId);
   const project = projects.find((p) => p.id === task.projectId);
-  const label = project?.name ?? area?.name;
+  const label = project ? (area ? `${area.name} › ${project.name}` : project.name) : area?.name;
 
   return (
     <div className={`task${done ? " done" : ""}`}>
       <button className={`check${done ? " done" : ""}`} aria-label="Concluir" onClick={() => void toggle(task)} />
       <span className="title" style={{ cursor: "pointer" }} onClick={() => openEditor(task.id)}>{task.title}</span>
+      {task.priority >= 2 && <span className="chip prio" title={task.priority === 3 ? "Urgente" : "Prioridade alta"}>{task.priority === 3 ? "!!" : "!"}</span>}
       {label && <span className="chip">{label}</span>}
+      {task.when === "date" && task.whenDate && <span className="chip">{shortDate(task.whenDate)}</span>}
       {task.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean).map((g) => (
         <span key={g!.id} className="chip tag" style={{ ["--tag" as string]: g!.color }}>{g!.name}</span>
       ))}

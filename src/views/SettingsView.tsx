@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { buildBackup, parseBackup, summarize } from "../lib/backup.ts";
 import { backupRepository } from "../lib/repository/backupRepository.ts";
+import { ColumnManager } from "../components/ColumnManager.tsx";
 import { useAuthStore } from "../stores/authStore.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 
@@ -77,6 +78,8 @@ export function SettingsView() {
         <button className="btn" type="submit">Alterar senha</button>
         {pwMsg && <div className={pwMsg.ok ? "ok" : "error"}>{pwMsg.text}</div>}
       </form>
+
+      <ColumnManager />
 
       <div className="day-title">Tags</div>
       <div className="tag-row">

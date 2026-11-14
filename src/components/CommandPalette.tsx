@@ -64,7 +64,7 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
     }));
     const places: Item[] = [
       ...areas.map((a) => ({ id: "a" + a.id, label: a.name, hint: "Área", group: "Ir para", run: done(() => go({ kind: "area", id: a.id })) })),
-      ...projects.map((p) => ({ id: "p" + p.id, label: p.name, hint: "Projeto", group: "Ir para", run: done(() => go({ kind: "project", id: p.id })) })),
+      ...projects.map((p) => ({ id: "p" + p.id, label: `${areas.find((a) => a.id === p.areaId)?.name ?? "Sem área"} › ${p.name}`, hint: "Projeto", group: "Ir para", run: done(() => go({ kind: "project", id: p.id })) })),
     ];
     const themeItem: Item = {
       id: "theme", label: theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro", group: "Ação", run: done(toggleTheme),
