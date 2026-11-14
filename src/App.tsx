@@ -8,6 +8,7 @@ import { BoardView } from "./views/BoardView.tsx";
 import { TaskEditor } from "./components/TaskEditor.tsx";
 import { UpcomingView } from "./views/UpcomingView.tsx";
 import { NotesSection } from "./views/NotesSection.tsx";
+import { SettingsView } from "./views/SettingsView.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
 import { TaskListView } from "./views/TaskListView.tsx";
 import { focus, inbox, today, todayISO, waiting } from "./lib/lenses.ts";
@@ -64,6 +65,9 @@ export function App() {
       break;
     case "waiting":
       content = <TaskListView title="Aguardando" tasks={lists.waiting} />;
+      break;
+    case "settings":
+      content = <SettingsView />;
       break;
     case "upcoming":
       content = <UpcomingView />;
@@ -135,6 +139,7 @@ export function App() {
           <input placeholder="Nova área…" value={newArea} onChange={(e) => setNewArea(e.target.value)} />
         </form>
         <div className="spacer" />
+        {nav("settings", "Configurações")}
         <button className="nav-item" onClick={() => void signOut()}>Sair</button>
       </aside>
       <main className={`main${view.kind === "agenda" || (view.kind === "project" && projectMode === "board") ? " wide" : ""}`}>

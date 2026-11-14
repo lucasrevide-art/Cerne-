@@ -1,0 +1,22 @@
+import { supabase } from "../supabase/client.ts";
+import { TABLES, chunk, stripOwner, type Tables } from "../backup.ts";
+import { unwrap } from "./util.ts";
+
+export const backupRepository = {
+  /** Exporta as linhas cruas (RLS já restringe ao usuário logado). */
+  async exportAll(): Promise<Tables> {
+    const out = {} as Tables;
+    for (const t of TABLES) out[t] = unwrap(await supabase.from(t).select("*")) as Record<string, unknown>[];
+    return out;
+  },
+
+  /** Importa com upsert: atualiza registros de mesmo id e nunca apaga nada. */
+  async importAll(tables: Tables): Promise<void> {
+    for (const t of TABLES) {
+      const onConflict = t === "task_tags" ? "task_id,tag_id" : "id";
+      for (const part of chunk(stripOwner(tables[t]), 500)) {
+        unwrap(await supabase.from(t).upsert(part, { onConflict }).select());
+      }
+    }
+  },
+};

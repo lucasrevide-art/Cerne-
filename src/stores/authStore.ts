@@ -9,7 +9,8 @@ interface AuthState {
   init: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
-  changePassword: (password: string) => Promise<void>;
+  /** Devolve a mensagem de erro, ou null se deu certo. */
+  changePassword: (password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -35,7 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   changePassword: async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
-    set({ error: error?.message ?? null });
+    return error?.message ?? null;
   },
   signOut: async () => {
     await supabase.auth.signOut();

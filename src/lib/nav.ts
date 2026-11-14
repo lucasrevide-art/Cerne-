@@ -1,4 +1,4 @@
-export type SimpleView = "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming";
+export type SimpleView = "inbox" | "today" | "focus" | "waiting" | "completed" | "agenda" | "upcoming" | "settings";
 
 export type View =
   | { kind: SimpleView }
