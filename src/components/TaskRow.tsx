@@ -1,3 +1,4 @@
+import { progress } from "../lib/subtasks.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
 import type { Task } from "../types.ts";
@@ -12,6 +13,8 @@ export function TaskRow({ task }: { task: Task }) {
   const openEditor = useUiStore((s) => s.openEditor);
   const tags = useDataStore((s) => s.tags);
   const recurring = useDataStore((s) => s.recurrences.some((r) => r.taskId === task.id));
+  const subtasks = useDataStore((s) => s.subtasks);
+  const sub = progress(subtasks, task.id);
   const done = task.status === "completed";
   const area = areas.find((a) => a.id === task.areaId);
   const project = projects.find((p) => p.id === task.projectId);
@@ -25,6 +28,7 @@ export function TaskRow({ task }: { task: Task }) {
       {task.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean).map((g) => (
         <span key={g!.id} className="chip tag" style={{ ["--tag" as string]: g!.color }}>{g!.name}</span>
       ))}
+      {sub.total > 0 && <span className="chip" title="Subtarefas">{sub.done}/{sub.total}</span>}
       {recurring && <span className="chip" title="Recorrente">↻</span>}
       {task.deadline && <span className="chip">prazo {task.deadline.slice(5).split("-").reverse().join("/")}</span>}
       {!done && (

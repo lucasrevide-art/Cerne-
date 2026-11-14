@@ -31,3 +31,14 @@ test("ordem das tabelas põe pais antes de filhos", () => {
   assert.ok(TABLES.indexOf("tasks") < TABLES.indexOf("task_tags"));
   assert.ok(TABLES.indexOf("areas") < TABLES.indexOf("projects"));
 });
+
+import { forTask, progress } from "../src/lib/subtasks.ts";
+import type { Subtask } from "../src/types.ts";
+
+test("subtarefas: ordena e conta progresso por tarefa", () => {
+  const s = (id: string, taskId: string, status: Subtask["status"], sortOrder: number): Subtask => ({ id, taskId, title: id, status, sortOrder });
+  const all = [s("b", "t1", "completed", 2), s("a", "t1", "open", 1), s("x", "t2", "open", 0)];
+  assert.deepEqual(forTask(all, "t1").map((x) => x.id), ["a", "b"]);
+  assert.deepEqual(progress(all, "t1"), { done: 1, total: 2 });
+  assert.deepEqual(progress(all, "nada"), { done: 0, total: 0 });
+});

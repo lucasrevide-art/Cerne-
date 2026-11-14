@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { forTask } from "../lib/subtasks.ts";
 import { describe } from "../lib/recurrence.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
@@ -15,6 +16,10 @@ export function TaskEditor() {
   const projects = useDataStore((s) => s.projects);
   const tags = useDataStore((s) => s.tags);
   const recurrences = useDataStore((s) => s.recurrences);
+  const subtasks = useDataStore((s) => s.subtasks);
+  const addSubtask = useDataStore((s) => s.addSubtask);
+  const toggleSubtask = useDataStore((s) => s.toggleSubtask);
+  const removeSubtask = useDataStore((s) => s.removeSubtask);
   const addTag = useDataStore((s) => s.addTag);
   const setRecurrence = useDataStore((s) => s.setRecurrence);
   const updateTask = useDataStore((s) => s.updateTask);
@@ -23,12 +28,14 @@ export function TaskEditor() {
   const [draft, setDraft] = useState<Task | null>(null);
   const [rec, setRec] = useState<RecDraft>({ type: "", interval: 1, weekdays: [] });
   const [newTag, setNewTag] = useState("");
+  const [newSub, setNewSub] = useState("");
 
   useEffect(() => {
     setDraft(task ?? null);
     const r = recurrences.find((x) => x.taskId === id);
     setRec(r ? { type: r.type, interval: r.interval, weekdays: r.weekdays } : { type: "", interval: 1, weekdays: [] });
     setNewTag("");
+    setNewSub("");
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
@@ -89,6 +96,23 @@ export function TaskEditor() {
               <option value="">—</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
+        </div>
+        <div className="form-section">
+          <span className="form-label">Subtarefas</span>
+          {forTask(subtasks, draft.id).map((st) => (
+            <div key={st.id} className="sub-row">
+              <button type="button" className={`check small${st.status === "completed" ? " done" : ""}`} aria-label="Concluir subtarefa" onClick={() => void toggleSubtask(st)} />
+              <span className={st.status === "completed" ? "sub-done" : ""}>{st.title}</span>
+              <button type="button" className="del" aria-label="Excluir subtarefa" onClick={() => void removeSubtask(st.id)}>×</button>
+            </div>
+          ))}
+          <input placeholder="+ subtarefa (Enter)" value={newSub} onChange={(e) => setNewSub(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              void addSubtask(draft.id, newSub);
+              setNewSub("");
+            }} />
         </div>
         <div className="form-section">
           <span className="form-label">Tags</span>

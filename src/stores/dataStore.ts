@@ -41,6 +41,9 @@ interface DataState {
   addNote: (areaId: string | null) => Promise<Note>;
   updateNote: (id: string, body: string) => Promise<void>;
   removeNote: (id: string) => Promise<void>;
+  addSubtask: (taskId: string, title: string) => Promise<void>;
+  toggleSubtask: (sub: Subtask) => Promise<void>;
+  removeSubtask: (id: string) => Promise<void>;
   addTag: (name: string) => Promise<Tag | null>;
   removeTag: (id: string) => Promise<void>;
   setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<void>;
@@ -145,6 +148,25 @@ export const useDataStore = create<DataState>((set, get) => ({
   removeNote: (id) => guard(set, async () => {
     set({ notes: get().notes.filter((n) => n.id !== id) });
     await noteRepository.remove(id);
+  }),
+
+  addSubtask: (taskId, title) => guard(set, async () => {
+    const clean = title.trim();
+    if (!clean) return;
+    const max = Math.max(0, ...get().subtasks.filter((x) => x.taskId === taskId).map((x) => x.sortOrder));
+    const created = await subtaskRepository.create(taskId, clean, max + 1);
+    set({ subtasks: [...get().subtasks, created] });
+  }),
+
+  toggleSubtask: (sub) => guard(set, async () => {
+    const status = sub.status === "completed" ? "open" : "completed";
+    set({ subtasks: get().subtasks.map((x) => (x.id === sub.id ? { ...x, status } : x)) });
+    await subtaskRepository.setStatus(sub.id, status);
+  }),
+
+  removeSubtask: (id) => guard(set, async () => {
+    set({ subtasks: get().subtasks.filter((x) => x.id !== id) });
+    await subtaskRepository.remove(id);
   }),
 
   addTag: async (name) => {

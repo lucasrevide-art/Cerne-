@@ -148,3 +148,11 @@ input:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0
 .chip.tag { --tag: var(--color-accent); background: color-mix(in srgb, var(--tag) 14%, white); color: var(--tag); }
 label.inline { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
 .modal select { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-1) var(--space-2); }
+
+/* subtarefas */
+.sub-row { display: flex; align-items: center; gap: var(--space-2); }
+.sub-row span { flex: 1; }
+.sub-done { text-decoration: line-through; color: var(--color-text-muted); }
+.check.small { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--color-accent); background: none; padding: 0; flex: none; }
+.check.small.done { background: var(--color-accent); }
+.sub-row .del { background: none; border: 0; color: var(--color-text-muted); }

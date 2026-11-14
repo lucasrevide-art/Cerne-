@@ -7,9 +7,9 @@ export const subtaskRepository = {
   async list(): Promise<Subtask[]> {
     return unwrap(await supabase.from("subtasks").select("*").order("sort_order")).map(subtaskFromRow);
   },
-  async create(taskId: string, title: string): Promise<Subtask> {
+  async create(taskId: string, title: string, sortOrder: number): Promise<Subtask> {
     return subtaskFromRow(
-      unwrap(await supabase.from("subtasks").insert({ task_id: taskId, title }).select().single()),
+      unwrap(await supabase.from("subtasks").insert({ task_id: taskId, title, sort_order: sortOrder }).select().single()),
     );
   },
   async setStatus(id: string, status: Subtask["status"]): Promise<void> {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { progress } from "../lib/subtasks.ts";
 import { COLUMNS, byColumn, dropOrder, movePatch, type Column } from "../lib/board.ts";
 import { useDataStore } from "../stores/dataStore.ts";
 import { useUiStore } from "../stores/uiStore.ts";
@@ -7,6 +8,7 @@ import type { Task } from "../types.ts";
 export function BoardView({ projectId, areaId }: { projectId: string; areaId: string | null }) {
   const allTasks = useDataStore((s) => s.tasks);
   const tags = useDataStore((s) => s.tags);
+  const subtasks = useDataStore((s) => s.subtasks);
   const addTask = useDataStore((s) => s.addTask);
   const updateTask = useDataStore((s) => s.updateTask);
   const setFocus = useDataStore((s) => s.setFocus);
@@ -27,6 +29,7 @@ export function BoardView({ projectId, areaId }: { projectId: string; areaId: st
   };
 
   const card = (t: Task) => {
+    const sub = progress(subtasks, t.id);
     const tagNames = t.tagIds.map((id) => tags.find((g) => g.id === id)).filter(Boolean);
     return (
       <div
@@ -42,6 +45,7 @@ export function BoardView({ projectId, areaId }: { projectId: string; areaId: st
         <span className="card-title">{t.title}</span>
         <div className="card-meta">
           {t.deadline && <span>prazo {t.deadline.slice(5).split("-").reverse().join("/")}</span>}
+          {sub.total > 0 && <span>☑ {sub.done}/{sub.total}</span>}
           {tagNames.map((g) => <span key={g!.id} className="chip">{g!.name}</span>)}
           {t.status !== "completed" && (
             <button
