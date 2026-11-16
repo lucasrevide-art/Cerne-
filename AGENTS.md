@@ -43,6 +43,14 @@ npm run build
 - `supabase/schema.sql` e `supabase/migration_*.sql` — banco.
 - `tests/` — um arquivo de teste por área de lógica.
 
+## Direção visual (atual)
+
+- Referência: dashboard "Online Courses" do Figma (arquivo `sxE2nmTQDejAS31MLdd2U8`). Preto, branco e cinza suave; barra lateral preta flutuante; cartões planos cinza `#f4f4f4` de raio 16, sem borda nem sombra; cartão dentro de cartão fica branco.
+- Fontes: títulos em Baloo 2 (800/700), texto em Rubik. Sem texto em caixa alta, sem rótulo decorativo acima de títulos.
+- Botões: primário preto, secundário com contorno preto de 2px, raio 8. Campos cinza, com borda preta só no foco.
+- Cores de apoio (`--butter`, `--coral`, `--sand`, `--rose`, `--tangerine`) só em destaques pontuais, como o cabeçalho da Entrada.
+- Tudo é feito por tokens em `src/styles/tokens.css` (claro e escuro). Não use cor fixa em `app.css`. A camada "Direção visual Cerne" no fim de `app.css` sobrescreve a base; mantenha ali o que for do visual.
+
 ## Regras de código
 
 1. **Só os repositórios acessam o Supabase.** Componentes e stores chamam o repositório.

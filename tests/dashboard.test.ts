@@ -57,3 +57,33 @@ test("agenda em lista: atrasadas primeiro, depois dias em ordem", () => {
   assert.deepEqual(l.map((g) => g.day), ["overdue", NOW, "2026-06-12", "2026-06-20"]);
   assert.deepEqual(l[0].tasks.map((t) => t.id), ["b"]);
 });
+
+import { completionsByDay, greeting, smoothPath } from "../src/lib/stats.ts";
+
+test("concluídas por dia: janela de 7 dias terminando hoje, dia local", () => {
+  const old = process.env.TZ;
+  process.env.TZ = "America/Sao_Paulo";
+  try {
+    const done = (id: string, at: string) => mk({ id, status: "completed", completedAt: at });
+    const r = completionsByDay([
+      done("a", "2026-06-10T15:00:00Z"), done("b", "2026-06-10T20:00:00Z"),
+      done("c", "2026-06-11T01:00:00Z"), // 22h do dia 10 no Brasil
+      done("velha", "2026-05-01T12:00:00Z"), mk({ id: "aberta" }),
+    ], "2026-06-10");
+    assert.equal(r.length, 7);
+    assert.equal(r[0].day, "2026-06-04");
+    assert.equal(r[6].day, "2026-06-10");
+    assert.equal(r[6].count, 3);
+    assert.equal(r.reduce((n, d) => n + d.count, 0), 3);
+  } finally {
+    if (old === undefined) delete process.env.TZ; else process.env.TZ = old;
+  }
+});
+
+test("caminho suave e saudação", () => {
+  assert.equal(smoothPath([]), "");
+  assert.match(smoothPath([{ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 20, y: 0 }]), /^M0,0 C.* C/);
+  assert.equal(greeting(9), "Bom dia");
+  assert.equal(greeting(14), "Boa tarde");
+  assert.equal(greeting(21), "Boa noite");
+});
