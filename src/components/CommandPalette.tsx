@@ -125,7 +125,7 @@ export function CommandPalette({ go }: { go: (v: View) => void }) {
         <div className="pal-search"><Search />
         <input role="combobox" aria-label="Buscar no Cerne" aria-expanded="true" aria-controls="command-results" aria-activedescendant={activeId}
           autoFocus
-          placeholder="Buscar tarefas, notas, áreas… ou digite para criar"
+          placeholder="Buscar tarefas, notas, projetos… ou digite para criar"
           value={q}
           onChange={(e) => { setQ(e.target.value); setIdx(0); }}
           onKeyDown={(e) => {

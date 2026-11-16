@@ -53,7 +53,7 @@ export function AreasView({ go }: { go: Props["go"] }) {
   const legacy = projects.filter((p) => !p.areaId && !p.deletedAt);
   return (
     <>
-      <header className="page-head"><h2>Áreas</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : <><Plus />Nova área</>}</button></header>
+      <header className="page-head"><h2>Projetos</h2><button className="btn" onClick={() => setCreating(!creating)}>{creating ? "Fechar" : <><Plus />Nova área</>}</button></header>
       {creating && <QuickAdd label="Nome da área" button="Criar área" submit={async (name) => {
         const saved = await addArea(name);
         if (saved) setCreating(false);
@@ -111,7 +111,7 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
   return (
     <>
       <nav className="crumbs" aria-label="Localização">
-        <button className="link-btn" onClick={() => go({ kind: "areas" })}>Áreas</button>
+        <button className="link-btn" onClick={() => go({ kind: "areas" })}>Projetos</button>
         {project && area && <><ChevronRight /> <button className="link-btn" onClick={() => go({ kind: "area", id: area.id })}>{area.name}</button></>}
         <ChevronRight /><span aria-current="page">{group.name}</span>
       </nav>

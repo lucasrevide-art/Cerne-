@@ -1,7 +1,7 @@
 /*
  * Direção visual do Cerne (referência: dashboard "Online Courses" do Figma).
- * Preto e branco com cinza suave; títulos em fonte arredondada pesada (Baloo 2),
- * texto em Rubik; cartões planos cinza de raio 16; barra lateral preta flutuante.
+ * Preto e branco com cinza suave; tipografia sem serifa do sistema Apple
+ * (SF Pro, via -apple-system; Segoe UI/Roboto em outros sistemas); cartões planos cinza de raio 16; barra lateral preta flutuante.
  * Cores de apoio (areia, manteiga, coral, rosa, tangerina) só marcam áreas e destaques.
  */
 :root {
@@ -52,8 +52,8 @@
   --shadow-md: 0 24px 48px -12px rgba(0, 0, 0, 0.22);
   --shadow-side: 0 30px 40px -14px rgba(0, 0, 0, 0.35);
 
-  --font-sans: "Rubik Variable", Rubik, ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Baloo 2", "Rubik Variable", ui-rounded, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --text-sm: 13px;
   --text-md: 15px;
   --text-component-title: 20px;

@@ -46,7 +46,7 @@ npm run build
 ## Direção visual (atual)
 
 - Referência: dashboard "Online Courses" do Figma (arquivo `sxE2nmTQDejAS31MLdd2U8`). Preto, branco e cinza suave; barra lateral preta flutuante; cartões planos cinza `#f4f4f4` de raio 16, sem borda nem sombra; cartão dentro de cartão fica branco.
-- Fontes: títulos em Baloo 2 (800/700), texto em Rubik. Sem texto em caixa alta, sem rótulo decorativo acima de títulos.
+- Fontes: tipografia do sistema Apple (`-apple-system`, SF Pro), sem fonte web; títulos em peso 700. Nada de Inter/Rubik/Baloo. Sem texto em caixa alta, sem rótulo decorativo acima de títulos.
 - Botões: primário preto, secundário com contorno preto de 2px, raio 8. Campos cinza, com borda preta só no foco.
 - Cores de apoio (`--butter`, `--coral`, `--sand`, `--rose`, `--tangerine`) só em destaques pontuais, como o cabeçalho da Entrada.
 - Tudo é feito por tokens em `src/styles/tokens.css` (claro e escuro). Não use cor fixa em `app.css`. A camada "Direção visual Cerne" no fim de `app.css` sobrescreve a base; mantenha ali o que for do visual.
@@ -83,7 +83,7 @@ npm run build
 
 ## Decisões de produto já tomadas (não desfazer sem o dono pedir)
 
-- **Menu:** Inbox, Agenda, Concluídas e Áreas (com os projetos recuados abaixo de cada área). Hoje, Quadro, Aguardando, Próximas e A Única Coisa não são itens de menu.
+- **Menu:** Entrada, Agenda, Projetos (as áreas, exibidas só ao clicar; cada área abre seus projetos), Concluídas. O menu lateral pode ser recolhido para ícones (preferência em localStorage `cerne.sidebar`). Antes: Inbox, Agenda, Concluídas e Áreas (com os projetos recuados abaixo de cada área). Hoje, Quadro, Aguardando, Próximas e A Única Coisa não são itens de menu.
 - **Inbox é o painel central:** reúne todas as áreas e projetos nas seções Atrasadas, Urgentes, Hoje, Próximos 7 dias, Aguardando e Sem área definida. Cada tarefa entra em uma seção só (`sectionOf` em `dashboard.ts`). A tarefa em foco aparece em destaque no topo.
 - **Agenda única** com três visões: Lista, Mês e Horários (grade 6h–22h, encaixe de 15 min; bloco de tempo é `startTime` + `durationMinutes` na própria tarefa).
 - **Hierarquia Área → Projeto → Tarefa.** Projeto só se cria dentro de uma área. No editor, o campo Projeto depende da Área (`projectsForArea`).

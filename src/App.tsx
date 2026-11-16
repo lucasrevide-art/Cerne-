@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCheck, ChevronDown, ChevronRight, Folder, Inbox, LogOut, Menu, Moon, Search, Settings, Sun, Timer, User } from "lucide-react";
+import { CalendarDays, CheckCheck, ChevronDown, ChevronRight, Folder, Inbox, LogOut, Menu, Moon, Search, Settings, Sun, Timer, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { ActionMenu, MenuItem, MenuSeparator } from "./components/ui/ActionMenu.tsx";
 import { useCallback, useEffect, useState } from "react";
 import { Dialog } from "./components/ui/Dialog.tsx";
@@ -105,6 +105,15 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     return () => query.removeEventListener("change", update);
   }, []);
   const [tools, setTools] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem("cerne.sidebar") === "collapsed"; } catch { return false; } });
+  const isCollapsed = collapsed && !compact;
+  const toggleSidebar = () => setCollapsed((c) => {
+    try { localStorage.setItem("cerne.sidebar", c ? "open" : "collapsed"); } catch { /* sem armazenamento: vale só nesta sessão */ }
+    return !c;
+  });
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const inProjects = view.kind === "areas" || view.kind === "area" || view.kind === "project";
+  useEffect(() => { if (inProjects) setProjectsOpen(true); }, [view.kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const navigate = useCallback((next: View) => { setMobileNav(false); go(next); }, [go]);
 
   useShortcuts(navigate, view.kind !== "portal");
@@ -123,7 +132,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   const nav = (kind: SimpleView, label: string) => {
     const Icon = navIcons[kind];
     return (
-      <button aria-current={view.kind === kind ? "page" : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
+      <button aria-current={view.kind === kind ? "page" : undefined} aria-label={label} title={isCollapsed ? label : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
         <Icon /><span>{label}</span>
       </button>
     );
@@ -152,13 +161,22 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   }
 
   const sidebar = (
-    <aside className="sidebar" aria-label="Navegação principal">
-      <h1>Cerne</h1>
-      <button className="nav-item search-link" onClick={togglePalette}><Search /><span>Buscar</span><kbd>⌘ K</kbd></button>
+    <aside className={`sidebar${isCollapsed ? " collapsed" : ""}`} aria-label="Navegação principal">
+      <div className="sidebar-brand">
+        <h1>{isCollapsed ? "C" : "Cerne"}</h1>
+        {!compact && <button className="icon-button" aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"} title={isCollapsed ? "Expandir menu" : "Recolher menu"} onClick={toggleSidebar}>
+          {isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+        </button>}
+      </div>
+      <button className="nav-item search-link" aria-label="Buscar" title={isCollapsed ? "Buscar" : undefined} onClick={togglePalette}><Search /><span>Buscar</span><kbd>⌘ K</kbd></button>
       {nav("inbox", "Entrada")}
       {nav("agenda", "Agenda")}
-      {nav("areas", "Áreas")}
-      <div className="sidebar-areas">
+      <button aria-expanded={projectsOpen} aria-label="Projetos" title={isCollapsed ? "Projetos" : undefined}
+        className={`nav-item${view.kind === "areas" ? " active" : ""}`}
+        onClick={() => { if (view.kind === "areas") setProjectsOpen(!projectsOpen); else { setProjectsOpen(true); navigate({ kind: "areas" }); } }}>
+        <Folder /><span>Projetos</span>{projectsOpen ? <ChevronDown className="nav-chevron" /> : <ChevronRight className="nav-chevron" />}
+      </button>
+      {projectsOpen && !isCollapsed && <div className="sidebar-areas">
         {activeAreas.map((area) => {
           const current = view.kind === "area" && view.id === area.id;
           const open = expanded[area.id] ?? Boolean(currentProject && currentProject.areaId === area.id);
@@ -174,10 +192,10 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
           </div>;
         })}
         {activeProjects.filter((p) => !p.areaId).map(projectLink)}
-      </div>
+      </div>}
       <div className="spacer" />
       {nav("completed", "Concluídas")}
-      <button className="nav-item" aria-expanded={tools} onClick={() => setTools(!tools)}><Timer />Ferramentas de foco</button>
+      <button className="nav-item" aria-expanded={tools} aria-label="Ferramentas de foco" title={isCollapsed ? "Ferramentas de foco" : undefined} onClick={() => setTools(!tools)}><Timer /><span>Ferramentas de foco</span></button>
       <ActionMenu label="Perfil" side="top" heading={<><strong>Minha conta</strong><small>{session?.user.email}</small></>}
         trigger={<><User /><span>Perfil</span><ChevronDown /></>}>
         <MenuItem onSelect={() => navigate({ kind: "settings" })}><Settings />Conta e dados</MenuItem>
@@ -188,7 +206,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     </aside>
   );
 
-  return <div className="layout">
+  return <div className={`layout${isCollapsed ? " sidebar-collapsed" : ""}`}>
     {compact && <div className="mobile-header"><strong>Cerne</strong>
       <button className="btn outline icon" aria-label="Menu" aria-expanded={mobileNav} onClick={() => setMobileNav(true)}><Menu /></button>
     </div>}

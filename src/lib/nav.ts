@@ -8,6 +8,6 @@ export type View =
 export const GO_KEYS: Record<string, { view: SimpleView; label: string }> = {
   i: { view: "inbox", label: "Entrada" },
   a: { view: "agenda", label: "Agenda" },
-  e: { view: "areas", label: "Áreas" },
+  e: { view: "areas", label: "Projetos" },
   c: { view: "completed", label: "Concluídas" },
 };

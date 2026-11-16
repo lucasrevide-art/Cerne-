@@ -70,13 +70,13 @@ export function BoardView({ tasks, home, showProject, readOnly }: {
                     {sub.total > 0 && <span aria-label="Checklist"><CheckSquare />{sub.done}/{sub.total}</span>}
                     {task.shared && <span className="chip">Compartilhada</span>}
                   </div>
-                  {!readOnly && <Select label={`Mover ${task.title}`} value="" disabled={!!moving} onValueChange={(value) => {
+                  {!readOnly && <div className="move-control"><Select label={`Mover ${task.title}`} value="" disabled={!!moving} onValueChange={(value) => {
                     const target = columns.find((column) => column.id === value);
                     if (target) void move(task.id, target);
                   }}>
                     <option value="">Mover para…</option>
                     {columns.filter((column) => column.id !== c.id).map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}
-                  </Select>}
+                  </Select></div>}
                 </article>
               );
             })}
