@@ -64,7 +64,7 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
             </div>
           </div>
         ))}
-        {access.some((entry) => !entry.member_id) && <p className="empty">Envie o link à pessoa convidada. Ela precisa entrar com o e-mail confirmado que consta no convite.</p>}
+        {access.some((entry) => !entry.member_id) && <p className="empty">Peça para a pessoa entrar em cernev2.vercel.app (criando a conta, se for a primeira vez) com exatamente este e-mail. O acesso é liberado sozinho. O link acima também funciona, se preferir enviá-lo.</p>}
         {busy && <span role="status">Aguarde…</span>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
         <button className="btn outline" onClick={close}>Fechar</button>

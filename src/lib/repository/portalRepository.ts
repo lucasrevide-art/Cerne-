@@ -49,6 +49,10 @@ export const portalRepository = {
   async invite(area: string, email: string, level: AccessLevel): Promise<AreaAccess> {
     return unwrap(await supabase.rpc("cerne_access", { area, action: "invite", value: email.trim(), level }));
   },
+  /** Liga à conta os convites feitos para o e-mail dela. Silencioso se a migração ainda não rodou. */
+  async claim(): Promise<void> {
+    await supabase.rpc("cerne_access", { area: null, action: "claim" });
+  },
   async accept(token: string): Promise<string> {
     return unwrap(await supabase.rpc("cerne_access", { area: null, action: "accept", value: token }));
   },

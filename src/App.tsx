@@ -63,7 +63,7 @@ export function App() {
         setInvite(undefined); setInviteError("");
       }).catch((e: Error) => { if (active) setInviteError(e.message); }).finally(() => { if (active) setChecking(false); });
     } else {
-      portalRepository.areas().then((areas) => {
+      portalRepository.claim().catch(() => {}).then(() => portalRepository.areas()).then((areas) => {
         if (active && areas.length && readRoute().kind !== "portal") go({ kind: "portal", id: areas.length === 1 ? areas[0].id : undefined });
       }).catch(() => {}).finally(() => { if (active) setChecking(false); });
     }
