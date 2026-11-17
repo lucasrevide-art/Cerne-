@@ -7,7 +7,7 @@ export type AreaAccess = { id: string; email: string; permission: AccessLevel; t
 export type PortalArea = { id: string; name: string };
 export type PortalTask = {
   id: string; title: string; notes: string; status: string; deadline: string | null;
-  completed_at: string | null; project_id: string | null; content_version: number; stage: string | null;
+  completed_at: string | null; project_id: string | null; content_version: number; stage: string | null; priority?: number;
   latest_activity?: { kind: ActivityKind; created_at: string } | null;
   review: { kind: string; version: number } | null;
 };

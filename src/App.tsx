@@ -1,5 +1,4 @@
-import { CalendarDays, CheckCheck, ChevronDown, ChevronRight, Folder, Inbox, LogOut, Menu, Moon, Search, Settings, Sun, Timer, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { ActionMenu, MenuItem, MenuSeparator } from "./components/ui/ActionMenu.tsx";
+import { Archive, CalendarDays, FileText, Inbox, Menu, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Dialog } from "./components/ui/Dialog.tsx";
 import { Notice } from "./components/Notice.tsx";
@@ -8,15 +7,21 @@ import { CommandPalette, useShortcuts } from "./components/CommandPalette.tsx";
 import { PomodoroWidget } from "./components/PomodoroWidget.tsx";
 import { TaskEditor } from "./components/TaskEditor.tsx";
 import { VoiceButton } from "./components/VoiceButton.tsx";
-import { WorkspaceActions } from "./components/WorkspaceActions.tsx";
-import { archived } from "./lib/workspaces.ts";
+import { AccountDialog } from "./components/AccountDialog.tsx";
+import { AccountMenuItems } from "./components/AccountMenuItems.tsx";
+import { AppSidebar } from "./components/AppSidebar.tsx";
+import { activeTasks, archived } from "./lib/workspaces.ts";
+import { attentionCount, displayName, dotColor, openCount, priorityTasks } from "./lib/sidebar.ts";
+import { todayISO } from "./lib/lenses.ts";
+import { useSidebarState } from "./lib/useSidebarState.ts";
 import { portalRepository } from "./lib/repository/portalRepository.ts";
-import type { SimpleView, View } from "./lib/nav.ts";
+import type { View } from "./lib/nav.ts";
 import { useAuthStore } from "./stores/authStore.ts";
 import { useDataStore } from "./stores/dataStore.ts";
 import { useUiStore } from "./stores/uiStore.ts";
 import { AgendaScreen } from "./views/AgendaScreen.tsx";
 import { AreasView, WorkspaceView } from "./views/AreaProjectViews.tsx";
+import { ArchivedView, DocumentsView, PriorityView, TrashView } from "./views/ShelfViews.tsx";
 import { CompletedView } from "./views/CompletedView.tsx";
 import { InboxView } from "./views/InboxView.tsx";
 import { PortalView } from "./views/PortalView.tsx";
@@ -87,33 +92,17 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
   const subscribe = useDataStore((s) => s.subscribe);
   const reset = useDataStore((s) => s.reset);
   const loaded = useDataStore((s) => s.loaded);
+  const tasks = useDataStore((s) => s.tasks);
+  const notes = useDataStore((s) => s.notes);
   const areas = useDataStore((s) => s.areas);
   const projects = useDataStore((s) => s.projects);
   const error = useDataStore((s) => s.error);
-  const theme = useUiStore((s) => s.theme);
-  const toggleTheme = useUiStore((s) => s.toggleTheme);
   const togglePalette = useUiStore((s) => s.togglePalette);
   const closeEditor = useUiStore((s) => s.closeEditor);
   const closePalette = useUiStore((s) => s.closePalette);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [mobileNav, setMobileNav] = useState(false);
-  const [compact, setCompact] = useState(() => matchMedia("(max-width: 680px)").matches);
-  useEffect(() => {
-    const query = matchMedia("(max-width: 680px)");
-    const update = () => { setCompact(query.matches); if (!query.matches) setMobileNav(false); };
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
+  const { compact, mobileNav, setMobileNav, collapsed: isCollapsed, toggle: toggleSidebar } = useSidebarState();
   const [tools, setTools] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem("cerne.sidebar") === "collapsed"; } catch { return false; } });
-  const isCollapsed = collapsed && !compact;
-  const toggleSidebar = () => setCollapsed((c) => {
-    try { localStorage.setItem("cerne.sidebar", c ? "open" : "collapsed"); } catch { /* sem armazenamento: vale só nesta sessão */ }
-    return !c;
-  });
-  const [projectsOpen, setProjectsOpen] = useState(false);
-  const inProjects = view.kind === "areas" || view.kind === "area" || view.kind === "project";
-  useEffect(() => { if (inProjects) setProjectsOpen(true); }, [view.kind]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [profile, setProfile] = useState(false);
   const navigate = useCallback((next: View) => { setMobileNav(false); go(next); }, [go]);
 
   useShortcuts(navigate, view.kind !== "portal");
@@ -128,83 +117,62 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
     go={({ area, task, note }) => navigate({ kind: "portal", id: area, taskId: task, noteId: note, preview: true })}
     exit={() => view.id && navigate({ kind: "area", id: view.id })} signOut={() => void signOut()} />;
 
-  const navIcons = { inbox: Inbox, agenda: CalendarDays, areas: Folder, completed: CheckCheck, settings: Settings };
-  const nav = (kind: SimpleView, label: string) => {
-    const Icon = navIcons[kind];
-    return (
-      <button aria-current={view.kind === kind ? "page" : undefined} aria-label={label} title={isCollapsed ? label : undefined} className={`nav-item${view.kind === kind ? " active" : ""}`} onClick={() => navigate({ kind })}>
-        <Icon /><span>{label}</span>
-      </button>
-    );
-  };
-  const currentProject = view.kind === "project" && projects.find((p) => p.id === view.id);
-  const projectLink = (p: typeof projects[number]) => (
-    <div key={p.id} className="sidebar-group-row sidebar-project">
-      <button aria-current={currentProject && currentProject.id === p.id ? "page" : undefined}
-        className={`nav-item${currentProject && currentProject.id === p.id ? " active" : ""}`}
-        onClick={() => navigate({ kind: "project", id: p.id })}>{p.name}</button>
-      <WorkspaceActions group={p} />
-    </div>
-  );
-  const activeAreas = areas.filter((a) => !a.deletedAt && !archived(a));
-  const activeProjects = projects.filter((p) => !p.deletedAt && !archived(p));
   let content;
   switch (view.kind) {
     case "inbox": content = <InboxView openAgenda={() => navigate({ kind: "agenda" })} />; break;
     case "agenda": content = <AgendaScreen />; break;
     case "areas": content = <AreasView go={navigate} />; break;
+    case "priority": content = <PriorityView />; break;
+    case "documents": content = <DocumentsView go={navigate} />; break;
+    case "trash": content = <TrashView />; break;
+    case "archived": content = <ArchivedView />; break;
     case "completed": content = <CompletedView />; break;
     case "settings": content = <SettingsView />; break;
     case "area":
     case "project": content = <WorkspaceView key={`${view.id}:${view.noteId ?? ""}`} id={view.id} kind={view.kind} noteId={view.noteId}
-      initialTab={view.noteId ? "notes" : undefined} go={navigate} />; break;
+      initialTab={view.noteId ? "notes" : view.tab} go={navigate} />; break;
   }
 
-  const sidebar = (
-    <aside className={`sidebar${isCollapsed ? " collapsed" : ""}`} aria-label="Navegação principal">
-      <div className="sidebar-brand">
-        <h1>{isCollapsed ? "C" : "Cerne"}</h1>
-        {!compact && <button className="icon-button" aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"} title={isCollapsed ? "Expandir menu" : "Recolher menu"} onClick={toggleSidebar}>
-          {isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-        </button>}
-      </div>
-      <button className="nav-item search-link" aria-label="Buscar" title={isCollapsed ? "Buscar" : undefined} onClick={togglePalette}><Search /><span>Buscar</span><kbd>⌘ K</kbd></button>
-      {nav("inbox", "Entrada")}
-      {nav("agenda", "Agenda")}
-      <button aria-expanded={projectsOpen} aria-label="Projetos" title={isCollapsed ? "Projetos" : undefined}
-        className={`nav-item${view.kind === "areas" ? " active" : ""}`}
-        onClick={() => { if (view.kind === "areas") setProjectsOpen(!projectsOpen); else { setProjectsOpen(true); navigate({ kind: "areas" }); } }}>
-        <Folder /><span>Projetos</span>{projectsOpen ? <ChevronDown className="nav-chevron" /> : <ChevronRight className="nav-chevron" />}
-      </button>
-      {projectsOpen && !isCollapsed && <div className="sidebar-areas">
-        {activeAreas.map((area) => {
-          const current = view.kind === "area" && view.id === area.id;
-          const open = expanded[area.id] ?? Boolean(currentProject && currentProject.areaId === area.id);
-          return <div className="area-group" key={area.id}>
-            <div className="sidebar-group-row">
-              <button className="icon-button" aria-label={`${open ? "Recolher" : "Expandir"} ${area.name}`} aria-expanded={open}
-                onClick={() => setExpanded({ ...expanded, [area.id]: !open })}>{open ? <ChevronDown /> : <ChevronRight />}</button>
-              <button className={`nav-item${current ? " active" : ""}`} aria-current={current ? "page" : undefined}
-                onClick={() => navigate({ kind: "area", id: area.id })}>{area.name}</button>
-              <WorkspaceActions group={area} onPreview={() => navigate({ kind: "portal", id: area.id, preview: true })} />
-            </div>
-            {open && activeProjects.filter((p) => p.areaId === area.id).map(projectLink)}
-          </div>;
-        })}
-        {activeProjects.filter((p) => !p.areaId).map(projectLink)}
-      </div>}
-      <div className="spacer" />
-      {nav("completed", "Concluídas")}
-      <button className="nav-item" aria-expanded={tools} aria-label="Ferramentas de foco" title={isCollapsed ? "Ferramentas de foco" : undefined} onClick={() => setTools(!tools)}><Timer /><span>Ferramentas de foco</span></button>
-      <ActionMenu label="Perfil" side="top" heading={<><strong>Minha conta</strong><small>{session?.user.email}</small></>}
-        trigger={<><User /><span>Perfil</span><ChevronDown /></>}>
-        <MenuItem onSelect={() => navigate({ kind: "settings" })}><Settings />Conta e dados</MenuItem>
-        <MenuItem onSelect={toggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}{theme === "dark" ? "Tema claro" : "Tema escuro"}</MenuItem>
-        <MenuSeparator />
-        <MenuItem onSelect={() => void signOut()}><LogOut />Sair</MenuItem>
-      </ActionMenu>
-    </aside>
-  );
+  const now = todayISO();
+  const live = activeTasks(tasks, areas, projects);
+  const currentProject = view.kind === "project" ? projects.find((p) => p.id === view.id) : undefined;
+  const currentAreaId = view.kind === "area" ? view.id : currentProject?.areaId ?? null;
+  const currentArea = areas.find((a) => a.id === currentAreaId && !a.deletedAt && !archived(a));
+  const areaCount = (id: string) => openCount(live.filter((t) => (t.areaId ?? projects.find((p) => p.id === t.projectId)?.areaId) === id));
+  const projectCount = (id: string) => openCount(live.filter((t) => t.projectId === id));
+  const trashed = [...areas, ...projects].filter((e) => e.deletedAt).length;
+  const shelved = [...areas, ...projects].filter((e) => !e.deletedAt && archived(e)).length;
+  const docs = notes.filter((n) => !areas.find((a) => a.id === n.areaId)?.deletedAt && !projects.find((p) => p.id === n.projectId)?.deletedAt).length;
+  const at = (kind: View["kind"]) => view.kind === kind;
+  const email = session?.user.email ?? "";
+
+  const sidebar = <AppSidebar collapsed={isCollapsed} compact={compact} onToggle={toggleSidebar} onSearch={togglePalette}
+    account={{
+      name: displayName(email, session?.user.user_metadata?.name as string | undefined), email,
+      menu: <AccountMenuItems onProfile={() => setProfile(true)} onCompleted={() => navigate({ kind: "completed" })}
+        onFocusTools={() => setTools(!tools)} onSettings={() => navigate({ kind: "settings" })} onSignOut={() => void signOut()} />,
+    }}
+    items={[
+      { key: "inbox", label: "Inbox", icon: <Inbox />, count: attentionCount(live, now), active: at("inbox"), onSelect: () => navigate({ kind: "inbox" }) },
+      { key: "agenda", label: "Agenda", icon: <CalendarDays />, active: at("agenda"), onSelect: () => navigate({ kind: "agenda" }) },
+      { key: "priority", label: "Prioridades", icon: <Star />, count: priorityTasks(live).length, active: at("priority"), onSelect: () => navigate({ kind: "priority" }) },
+      { key: "documents", label: "Documentos", icon: <FileText />, count: docs, active: at("documents"), onSelect: () => navigate({ kind: "documents" }) },
+      { key: "trash", label: "Lixeira", icon: <Trash2 />, count: trashed, active: at("trash"), onSelect: () => navigate({ kind: "trash" }) },
+      { key: "archived", label: "Arquivados", icon: <Archive />, count: shelved, active: at("archived"), onSelect: () => navigate({ kind: "archived" }) },
+    ]}
+    spacesTitle={currentArea ? currentArea.name : "Pastas"}
+    back={currentArea ? { label: "Todas as pastas", onSelect: () => navigate({ kind: "areas" }) } : undefined}
+    spaces={currentArea ? [
+      { key: currentArea.id, label: "Visão geral", color: "var(--muted-foreground)", active: view.kind === "area", onSelect: () => navigate({ kind: "area", id: currentArea.id }) },
+      ...projects.filter((p) => p.areaId === currentArea.id && !p.deletedAt && !archived(p)).map((p, i) => ({
+        key: p.id, label: p.name, color: dotColor(undefined, i), count: projectCount(p.id), active: view.kind === "project" && view.id === p.id,
+        onSelect: () => navigate({ kind: "project", id: p.id }),
+      })),
+    ] : areas.filter((a) => !a.deletedAt && !archived(a)).map((a, i) => ({
+      key: a.id, label: a.name, color: dotColor(a.color, i), count: areaCount(a.id), onSelect: () => navigate({ kind: "area", id: a.id }),
+    }))}
+    create={currentArea ? { label: "Novo subprojeto", onSelect: () => navigate({ kind: "area", id: currentArea.id, tab: "projects" }) }
+      : { label: "Nova pasta", onSelect: () => navigate({ kind: "areas" }) }} />;
 
   return <div className={`layout${isCollapsed ? " sidebar-collapsed" : ""}`}>
     {compact && <div className="mobile-header"><strong>Cerne</strong>
@@ -217,6 +185,7 @@ function PersonalWorkspace({ view, go }: { view: View; go: (view: View) => void 
       {loaded ? content : !error && <p role="status">Carregando seus dados…</p>}
     </main>
     <TaskEditor />
+    {profile && <AccountDialog onClose={() => setProfile(false)} />}
     {tools && <><PomodoroWidget /><VoiceButton /></>}
     <CommandPalette go={navigate} />
   </div>;

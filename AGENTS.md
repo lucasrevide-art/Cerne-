@@ -83,7 +83,7 @@ npm run build
 
 ## Decisões de produto já tomadas (não desfazer sem o dono pedir)
 
-- **Menu:** Entrada, Agenda, Projetos (as áreas, exibidas só ao clicar; cada área abre seus projetos), Concluídas. O menu lateral pode ser recolhido para ícones (preferência em localStorage `cerne.sidebar`). Antes: Inbox, Agenda, Concluídas e Áreas (com os projetos recuados abaixo de cada área). Hoje, Quadro, Aguardando, Próximas e A Única Coisa não são itens de menu.
+- **Menu (barra lateral única, `AppSidebar`, igual para dono e cliente):** fundo branco, seleção em azul, grupo de bolinhas coloridas. Itens do dono: Inbox, Agenda, Prioridades, Documentos, Lixeira, Arquivados. Embaixo, as bolinhas são as pastas (áreas); ao entrar numa pasta viram os projetos dela (subprojetos), com "Todas as pastas" para voltar e "Novo subprojeto". Cliente: Inbox, Prioridades, Documentos e os projetos da pasta (sem Lixeira/Arquivados). Concluídas, Ferramentas de foco (só dono), Perfil e conta, Conta e dados e a Aparência (Claro/Escuro) ficam no menu que abre ao clicar no nome do usuário. Recolher para ícones guarda a escolha em `cerne.sidebar`. Prioridades = prioridade 2+ ou em foco (`priorityTasks`).
 - **Inbox é o painel central:** reúne todas as áreas e projetos nas seções Atrasadas, Urgentes, Hoje, Próximos 7 dias, Aguardando e Sem área definida. Cada tarefa entra em uma seção só (`sectionOf` em `dashboard.ts`). A tarefa em foco aparece em destaque no topo.
 - **Agenda única** com três visões: Lista, Mês e Horários (grade 6h–22h, encaixe de 15 min; bloco de tempo é `startTime` + `durationMinutes` na própria tarefa).
 - **Hierarquia Área → Projeto → Tarefa.** Projeto só se cria dentro de uma área. No editor, o campo Projeto depende da Área (`projectsForArea`).
