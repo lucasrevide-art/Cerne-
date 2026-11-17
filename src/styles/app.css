@@ -761,3 +761,64 @@ button.project-card:hover, .note-card:hover { box-shadow: inset 0 0 0 2px var(--
 /* Quadro: mover por arrastar; o seletor "Mover para…" só aparece em telas de toque */
 .move-control { display: none; }
 @media (pointer: coarse) { .move-control { display: block; } }
+
+/* Calendário de conteúdo do projeto */
+.content-cal { display: flex; flex-direction: column; gap: var(--space-4); }
+.content-cal-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-4) 0 var(--space-2); }
+.content-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--secondary); font-size: 13px; font-weight: 600; }
+.content-badge svg, .content-chip svg { width: 15px; height: 15px; }
+.content-cal-title { display: flex; align-items: center; gap: var(--space-3); }
+.content-cal-title h3 { margin: 0; font-family: var(--font-display); font-size: clamp(30px, 5vw, 48px); font-weight: 700; letter-spacing: -0.03em; min-width: 7ch; }
+.content-cal-count { margin: 0; color: var(--muted-foreground); font-size: 14px; }
+.content-weekdays, .content-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.content-weekdays { padding: 0 4px; }
+.content-weekdays span { text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
+.content-cell {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-height: 150px; padding: 14px; text-align: left;
+  background: var(--background); border: 1px solid var(--border); border-radius: 16px; color: var(--foreground);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.content-cell:not(.filled) { border-style: dashed; background: color-mix(in srgb, var(--muted), var(--background) 55%); }
+.content-cell:not(:disabled):hover { border-color: var(--foreground); }
+.content-cell:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+.content-cell.today { border-color: var(--foreground); border-width: 2px; padding: 13px; border-style: solid; }
+.content-cell-top { display: flex; align-items: baseline; justify-content: space-between; width: 100%; }
+.content-cell-top strong { font-family: var(--font-display); font-size: 22px; font-weight: 700; line-height: 1; }
+.content-cell-top small { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.content-cell em { margin: auto; padding-bottom: 14px; font-size: 14px; color: var(--muted-foreground); opacity: 0.7; }
+.content-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; background: var(--secondary); font-size: 13px; font-weight: 600; }
+.content-cell-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.45; color: var(--muted-foreground); }
+.content-more { font-size: 12px; color: var(--muted-foreground); }
+.content-blank { display: block; }
+
+.modal.content-modal { width: min(760px, calc(100% - 24px)); padding: 0; gap: 0; border-radius: 20px; overflow: hidden; }
+.content-modal-head { display: flex; align-items: center; gap: var(--space-3); padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.content-modal-head > div { flex: 1; min-width: 0; }
+.content-modal-head p { margin: 2px 0 0 12px; color: var(--muted-foreground); font-size: 14px; }
+.content-date { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; height: 60px; flex: none; border-radius: 14px; background: var(--secondary); }
+.content-date strong { font-family: var(--font-display); font-size: 24px; line-height: 1; }
+.content-date small { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.modal .content-title-input, .content-title-input { width: 100%; min-height: 40px; padding: 0 12px; background: transparent; border-color: transparent; font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.content-title-input:hover { background: var(--muted); }
+.content-modal-body { display: flex; flex-direction: column; gap: var(--space-4); padding: 20px 24px; overflow: auto; }
+.content-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.content-fields label, .content-block { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
+.content-fields .select-trigger { width: 100%; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--foreground); }
+.content-fields input[type="date"] { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--foreground); }
+.content-block textarea { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 15px; color: var(--foreground); resize: vertical; min-height: 64px; }
+.content-hint { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--muted); font-size: 13px; color: var(--muted-foreground); }
+.content-modal-actions { align-items: center; padding: 14px 24px; border-top: 1px solid var(--border); justify-content: flex-end; }
+.content-saved { margin-right: auto; font-size: 13px; color: var(--muted-foreground); }
+.content-modal-actions .destructive-text { color: var(--destructive); order: -1; }
+.content-modal-actions .destructive-text + .content-saved { margin-right: auto; margin-left: var(--space-2); }
+
+@media (max-width: 880px) {
+  .content-weekdays, .content-blank { display: none; }
+  .content-grid { grid-template-columns: 1fr; gap: 8px; }
+  .content-cell { min-height: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; column-gap: 14px; row-gap: 4px; padding: 12px 14px; }
+  .content-cell-top { grid-row: span 3; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .content-cell em { margin: 0; padding: 0; }
+  .content-cell .content-chip { justify-self: start; }
+  .content-fields { grid-template-columns: 1fr; }
+  .content-modal-head, .content-modal-body, .content-modal-actions { padding-inline: 16px; }
+}

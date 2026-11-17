@@ -1,9 +1,9 @@
 /** Ordem respeita chaves estrangeiras (pais antes de filhos). */
 export const TABLES = [
-  "areas", "projects", "tags", "board_columns", "tasks", "task_tags", "subtasks", "notes", "recurrences",
+  "areas", "projects", "content_items", "tags", "board_columns", "tasks", "task_tags", "subtasks", "notes", "recurrences",
 ] as const;
 /** Tabelas que backups antigos (ou bancos sem a migração) podem não ter. */
-export const OPTIONAL_TABLES: readonly string[] = ["board_columns"];
+export const OPTIONAL_TABLES: readonly string[] = ["board_columns", "content_items"];
 export type TableName = (typeof TABLES)[number];
 export type Tables = Record<TableName, Record<string, unknown>[]>;
 

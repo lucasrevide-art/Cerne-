@@ -4,6 +4,7 @@ drop table if exists recurrences cascade;
 drop table if exists task_tags cascade;
 drop table if exists subtasks cascade;
 drop table if exists notes cascade;
+drop table if exists content_items cascade;
 drop table if exists tasks cascade;
 drop table if exists board_columns cascade;
 drop table if exists tags cascade;
@@ -96,6 +97,21 @@ create table notes (
   updated_at timestamptz not null default now()
 );
 
+create table content_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  publish_date date not null,
+  title text not null default '',
+  format text not null default 'reels',
+  status text not null default 'idea',
+  objective text not null default '',
+  script text not null default '',
+  caption text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table recurrences (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
@@ -112,19 +128,20 @@ create unique index tasks_one_focus_per_user on tasks(user_id) where is_focus an
 create index on tasks(user_id, status);
 create index on subtasks(task_id);
 create index on notes(area_id);
+create index on content_items(project_id, publish_date);
 
 -- RLS
 do $$
 declare t text;
 begin
-  foreach t in array array['areas','projects','tags','board_columns','tasks','task_tags','subtasks','notes','recurrences'] loop
+  foreach t in array array['areas','projects','tags','board_columns','tasks','task_tags','subtasks','notes','content_items','recurrences'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy "own rows" on %I for all using (auth.uid() = user_id) with check (auth.uid() = user_id)', t);
   end loop;
 end $$;
 
 -- Realtime
-alter publication supabase_realtime add table areas, projects, tags, board_columns, tasks, task_tags, subtasks, notes, recurrences;
+alter publication supabase_realtime add table areas, projects, tags, board_columns, tasks, task_tags, subtasks, notes, content_items, recurrences;
 
 -- For the current schema, apply migration_workspaces.sql and then
 -- migration_client_portal.sql after this baseline.

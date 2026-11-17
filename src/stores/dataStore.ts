@@ -8,6 +8,7 @@ import { taskRepository } from "../lib/repository/taskRepository.ts";
 import { subtaskRepository } from "../lib/repository/subtaskRepository.ts";
 import { noteRepository } from "../lib/repository/noteRepository.ts";
 import { columnRepository } from "../lib/repository/columnRepository.ts";
+import { contentRepository } from "../lib/repository/contentRepository.ts";
 import { DEFAULT_COLUMNS, canRemoveColumn, sortColumns, swapOrder } from "../lib/board.ts";
 import { recurrenceRepository } from "../lib/repository/recurrenceRepository.ts";
 import { areaOf } from "../lib/workspaces.ts";
@@ -15,7 +16,7 @@ import { addDays } from "../lib/agenda.ts";
 import { todayISO } from "../lib/lenses.ts";
 import { forTask } from "../lib/subtasks.ts";
 import { daysBetween, nextOccurrence } from "../lib/recurrence.ts";
-import type { Area, BoardColumn, Note, Project, Recurrence, Subtask, Tag, Task } from "../types.ts";
+import type { Area, BoardColumn, ContentItem, Note, Project, Recurrence, Subtask, Tag, Task } from "../types.ts";
 
 export const TAG_COLORS = ["#2F6D64", "#B4423A", "#5B7C99", "#C98A1A", "#7A5C8E", "#6B7F7B"];
 
@@ -38,6 +39,10 @@ interface DataState {
   columns: BoardColumn[];
   /** true quando a tabela de colunas existe no banco. */
   customColumns: boolean;
+  /** Peças do calendário de conteúdo dos projetos. */
+  contents: ContentItem[];
+  /** true quando a tabela do calendário existe no banco. */
+  contentEnabled: boolean;
   load: () => Promise<void>;
   reset: () => void;
   subscribe: () => () => void;
@@ -64,6 +69,9 @@ interface DataState {
   removeColumn: (id: string, destination: string) => Promise<boolean>;
   addTag: (name: string) => Promise<Tag | null>;
   removeTag: (id: string) => Promise<boolean>;
+  addContent: (projectId: string, fields: Parameters<typeof contentRepository.create>[1]) => Promise<boolean>;
+  updateContent: (id: string, patch: Parameters<typeof contentRepository.update>[1]) => Promise<boolean>;
+  removeContent: (id: string) => Promise<boolean>;
   setRecurrence: (taskId: string, rec: Omit<Recurrence, "id" | "taskId" | "nextDate"> | null) => Promise<boolean>;
 }
 
@@ -107,16 +115,18 @@ export const useDataStore = create<DataState>((set, get) => ({
   recurrences: [],
   columns: [],
   customColumns: false,
+  contents: [],
+  contentEnabled: false,
   scoped: false,
   portalEnabled: false,
 
   load: async () => {
     const seq = ++loadSeq;
     try {
-      const [tasks, subtasks, projects, areas, tags, notes, recurrences, listed, portalEnabled] = await Promise.all([
+      const [tasks, subtasks, projects, areas, tags, notes, recurrences, listed, contentList, portalEnabled] = await Promise.all([
         taskRepository.list(), subtaskRepository.list(), projectRepository.list(),
         areaRepository.list(), tagRepository.list(), noteRepository.list(), recurrenceRepository.list(),
-        columnRepository.list(), portalRepository.available(),
+        columnRepository.list(), contentRepository.list(), portalRepository.available(),
       ]);
       if (seq !== loadSeq) return; // chegou uma carga mais nova (ou reset): descarta esta
       if (inflight > 0) return scheduleReload(); // há escrita em andamento: tenta de novo depois
@@ -131,7 +141,7 @@ export const useDataStore = create<DataState>((set, get) => ({
         if (seq !== loadSeq) return;
       }
       columns = sortColumns(columns);
-      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, columns, customColumns: listed !== null, scoped: portalEnabled || areas.some((a) => a.description !== undefined) || columns.some((c) => c.areaId !== undefined), portalEnabled, loaded: true, error: null });
+      set({ tasks, subtasks, projects, areas, tags, notes, recurrences, columns, customColumns: listed !== null, contents: contentList ?? [], contentEnabled: contentList !== null, scoped: portalEnabled || areas.some((a) => a.description !== undefined) || columns.some((c) => c.areaId !== undefined), portalEnabled, loaded: true, error: null });
     } catch (e) {
       if (seq === loadSeq) set({ error: e instanceof Error ? e.message : String(e) });
     }
@@ -140,7 +150,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   reset: () => {
     loadSeq++;
     clearTimeout(reloadTimer);
-    set({ loaded: false, error: null, tasks: [], subtasks: [], projects: [], areas: [], tags: [], notes: [], recurrences: [], columns: [], customColumns: false, scoped: false, portalEnabled: false });
+    set({ loaded: false, error: null, tasks: [], subtasks: [], projects: [], areas: [], tags: [], notes: [], recurrences: [], columns: [], customColumns: false, contents: [], contentEnabled: false, scoped: false, portalEnabled: false });
   },
 
   // Realtime: mudanças (inclusive as nossas) agrupadas num único recarregamento.
@@ -311,6 +321,21 @@ export const useDataStore = create<DataState>((set, get) => ({
       tags: get().tags.filter((t) => t.id !== id),
       tasks: get().tasks.map((t) => ({ ...t, tagIds: t.tagIds.filter((x) => x !== id) })),
     });
+  }),
+
+  addContent: (projectId, fields) => guard(set, async () => {
+    const created = await contentRepository.create(projectId, fields);
+    set({ contents: [...get().contents, created] });
+  }),
+
+  updateContent: (id, patch) => guard(set, async () => {
+    const saved = await contentRepository.update(id, patch);
+    set({ contents: get().contents.map((c) => c.id === id ? saved : c) });
+  }),
+
+  removeContent: (id) => guard(set, async () => {
+    await contentRepository.remove(id);
+    set({ contents: get().contents.filter((c) => c.id !== id) });
   }),
 
   setRecurrence: (taskId, rec) => guard(set, async () => {

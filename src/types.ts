@@ -97,3 +97,23 @@ export interface Recurrence {
   weekdays: number[];
   nextDate: string | null;
 }
+
+export type ContentFormat = "reels" | "static" | "carousel" | "story" | "video" | "text";
+export type ContentStatus = "idea" | "producing" | "approved" | "published";
+
+/** Peça do calendário de conteúdo de um projeto. */
+export interface ContentItem {
+  id: string;
+  projectId: string;
+  /** Dia de publicação, AAAA-MM-DD (data local). */
+  date: string;
+  title: string;
+  format: ContentFormat;
+  status: ContentStatus;
+  objective: string;
+  /** Roteiro ou desenvolvimento do conteúdo. */
+  script: string;
+  caption: string;
+  createdAt: string;
+  updatedAt: string;
+}

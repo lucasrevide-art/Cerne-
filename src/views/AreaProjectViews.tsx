@@ -1,5 +1,5 @@
 import { Select } from "../components/ui/Select.tsx";
-import { ChevronRight, FileText, Folder, LayoutGrid, List, ListTodo, PanelsTopLeft, Plus } from "lucide-react";
+import { CalendarDays, ChevronRight, FileText, Folder, LayoutGrid, List, ListTodo, PanelsTopLeft, Plus } from "lucide-react";
 import { Notice } from "../components/Notice.tsx";
 import { Tabs, TabPanel } from "../components/ui/Tabs.tsx";
 import { useEffect, useState } from "react";
@@ -11,18 +11,19 @@ import { todayISO } from "../lib/lenses.ts";
 import { portalRepository, type PortalTask } from "../lib/repository/portalRepository.ts";
 import { QuickAdd } from "../components/QuickAdd.tsx";
 import { WorkspaceActions } from "../components/WorkspaceActions.tsx";
+import { ContentCalendar } from "../components/ContentCalendar.tsx";
 import { BoardView } from "./BoardView.tsx";
 import { NotesSection } from "./NotesSection.tsx";
 import { TaskListView } from "./TaskListView.tsx";
 import { TaskRow } from "../components/TaskRow.tsx";
 import type { Area, Project } from "../types.ts";
 
-type Tab = "overview" | "tasks" | "projects" | "notes";
+type Tab = "overview" | "tasks" | "calendar" | "projects" | "notes";
 type Mode = "list" | "board";
 type Props = { id: string; kind: "area" | "project"; go: (view: View) => void; noteId?: string; initialTab?: Tab };
 const labels = {
   overview: <><PanelsTopLeft />Visão geral</>, tasks: <><ListTodo />Tarefas</>,
-  projects: <><Folder />Projetos</>, notes: <><FileText />Notas</>,
+  calendar: <><CalendarDays />Calendário</>, projects: <><Folder />Projetos</>, notes: <><FileText />Notas</>,
 };
 
 export function GroupList({ groups, go, kind }: { groups: (Area | Project)[]; go: Props["go"]; kind: Props["kind"] }) {
@@ -121,7 +122,7 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
       </header>
       {inactive && <Notice tone="warning" title="Espaço arquivado">Restaure o espaço para voltar a trabalhar nele.</Notice>}
       <Tabs value={tab} onChange={setTab} label="Seções do espaço" className="workspace-sections"
-        items={(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "notes"] as const)).map((key) => [key, labels[key]])}>
+        items={(kind === "area" ? (["overview", "tasks", "projects", "notes"] as const) : (["tasks", "calendar", "notes"] as const)).map((key) => [key, labels[key]])}>
       <TabPanel value="overview">
         <div className="overview">
           <section><h3>Próximas entregas</h3>{due.length ? due.map((t) => <TaskRow key={t.id} task={t} readOnly={!!inactive} />) :
@@ -153,6 +154,7 @@ export function WorkspaceView({ id, kind, go, noteId, initialTab }: Props) {
           {mode === "list" ? <TaskListView title="" tasks={visible} readOnly={!!inactive} defaults={inactive ? undefined : defaults} /> :
             <BoardView tasks={visible} home={defaults} readOnly={!!inactive} showProject={kind === "area"} />}
       </TabPanel>
+      <TabPanel value="calendar">{project && <ContentCalendar projectId={project.id} readOnly={!!inactive} />}</TabPanel>
       <TabPanel value="projects">
         {!inactive && <QuickAdd label="Nome do novo projeto" button="Criar projeto" submit={(name) => addProject(name, id)} />}
         <GroupList groups={areaProjects} go={go} kind="project" />

@@ -33,7 +33,7 @@ npm run build
 ## Estrutura
 
 - `src/types.ts` — tipos de domínio (camelCase).
-- `src/lib/` — lógica pura e testável, sem React nem Supabase: `dashboard.ts` (painel do Inbox), `board.ts` (quadro), `agenda.ts`, `calendar.ts`, `recurrence.ts`, `lenses.ts`, `backup.ts`, `search.ts`, `voice.ts`, `wav.ts`, `theme.ts`, `pomodoro.ts`.
+- `src/lib/` — lógica pura e testável, sem React nem Supabase: `dashboard.ts` (painel do Inbox), `board.ts` (quadro), `agenda.ts`, `calendar.ts`, `recurrence.ts`, `lenses.ts`, `backup.ts`, `search.ts`, `voice.ts`, `wav.ts`, `theme.ts`, `pomodoro.ts`, `content.ts` (calendário de conteúdo).
 - `src/lib/repository/*Repository.ts` — **único** lugar que fala com o Supabase. Um arquivo por entidade.
 - `src/lib/supabase/mappers.ts` — converte linhas do banco (snake_case) em tipos de domínio.
 - `src/lib/supabase/config.ts` — URL e Publishable key do Supabase, embutidas.
@@ -88,6 +88,7 @@ npm run build
 - **Agenda única** com três visões: Lista, Mês e Horários (grade 6h–22h, encaixe de 15 min; bloco de tempo é `startTime` + `durationMinutes` na própria tarefa).
 - **Hierarquia Área → Projeto → Tarefa.** Projeto só se cria dentro de uma área. No editor, o campo Projeto depende da Área (`projectsForArea`).
 - **Quadro Kanban** existe dentro de área e de projeto (botão Quadro / Lista). É estável: nele só se movem e criam cartões. Colunas são criadas, renomeadas, reordenadas e excluídas em **Configurações → Colunas do quadro**. As colunas são globais do usuário. A coluna `is_done` conclui a tarefa e não pode ser excluída.
+- **Calendário de conteúdo** dentro de cada projeto (aba Calendário, só em projeto): grade mensal começando na segunda; cada dia mostra formato (Reels, Estático, Carrossel, Story, Vídeo, Texto) e objetivo, ou "a definir". Clicar abre uma janela com título, formato, situação, data, objetivo, roteiro e legenda; salva ao fechar. Tabela `content_items` (`migration_content_calendar.sql`); sem a migração a aba mostra um aviso. Lógica em `src/lib/content.ts`.
 - **Financeiro** não é módulo: é `type: "financial"` na tarefa, com `amount` e `category`.
 - **Notas:** cada nota é um registro independente por área; o título é a primeira linha. Estão aprovadas como estão.
 - **Voz:** grava WAV no navegador, a função `/api/voice` chama a Gemini, e **sempre** abre a tela de conferência antes de salvar.

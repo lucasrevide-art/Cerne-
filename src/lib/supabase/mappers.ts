@@ -1,4 +1,4 @@
-import type { Area, BoardColumn, Note, Project, Recurrence, Subtask, Tag, Task } from "../../types.ts";
+import type { Area, BoardColumn, ContentItem, Note, Project, Recurrence, Subtask, Tag, Task } from "../../types.ts";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Row = Record<string, any>;
@@ -94,3 +94,9 @@ export const recurrenceToRow = (r: Partial<Recurrence>): Row => {
 /** Título da nota = primeira linha não vazia do corpo. */
 export const noteTitle = (body: string): string =>
   body.split("\n").map((l) => l.trim()).find(Boolean) ?? "Nova nota";
+
+export const contentFromRow = (r: Row): ContentItem => ({
+  id: r.id, projectId: r.project_id, date: r.publish_date, title: r.title ?? "",
+  format: r.format, status: r.status, objective: r.objective ?? "", script: r.script ?? "",
+  caption: r.caption ?? "", createdAt: r.created_at, updatedAt: r.updated_at,
+});
