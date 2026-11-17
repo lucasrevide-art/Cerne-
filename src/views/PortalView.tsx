@@ -8,6 +8,9 @@ import { FormattedNote } from "../components/FormattedNote.tsx";
 import { ItemFiles } from "../components/ItemFiles.tsx";
 import { Notice } from "../components/Notice.tsx";
 import { TaskActivity } from "../components/TaskActivity.tsx";
+import { PortalCalendar } from "../components/PortalCalendar.tsx";
+import { Tabs } from "../components/ui/Tabs.tsx";
+import { needsAnswer } from "../lib/content.ts";
 
 type Selection = { area?: string; task?: string; note?: string };
 
@@ -20,6 +23,7 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
   const [projectId, setProjectId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState<"overview" | "calendar">("overview");
   const refresh = useCallback(async () => {
     setError("");
     try {
@@ -78,6 +82,10 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
           <p className="empty">Este conteúdo está indisponível para sua conta.</p>}
       </> : <>
         {current.description && <p>{current.description}</p>}
+        {!!current.contents?.length && <Tabs value={section} onChange={setSection} label="Seções do portal" className="portal-sections"
+          items={[["overview", "Visão geral"], ["calendar", <>Calendário{needsAnswer(current.contents) > 0 && <span className="tab-count">{needsAnswer(current.contents)}</span>}</>]]} />}
+        {section === "calendar" && !!current.contents?.length ? <PortalCalendar contents={current.contents} projects={current.projects}
+          permission={preview || current.permission === "owner" ? "view" : current.permission} refresh={refresh} /> : <>
         <div className="portal-search-field"><Search /><input className="portal-search" aria-label="Buscar na área" placeholder="Buscar tarefas, projetos e notas" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         {query.trim() ? list("Tarefas encontradas", tasks) : <>
           {list("Aguardando sua participação", pending)}
@@ -96,6 +104,7 @@ export function PortalView({ selection, go, preview, exit, signOut }: {
           {projects.map((project) => <button className="btn outline" key={project.id} aria-pressed={projectId === project.id} onClick={() => { setProjectId(projectId === project.id ? "" : project.id); setQuery(""); }}>{project.name}</button>)}
         </div></section>}
         {!!notes.length && <section className="portal-section"><h3>Notas</h3>{notes.map((item) => <button className="portal-item" key={item.id} onClick={() => go({ area: current.id, note: item.id })}>{item.title || item.body.split("\n").find(Boolean) || "Nota"}</button>)}</section>}
+        </>}
       </>}
     </>}
   </main>;

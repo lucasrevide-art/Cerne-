@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.ts";
+import type { ContentFormat } from "../../types.ts";
 import { unwrap } from "./util.ts";
 
 export type AccessLevel = "view" | "review" | "edit";
@@ -10,9 +11,17 @@ export type PortalTask = {
   latest_activity?: { kind: ActivityKind; created_at: string } | null;
   review: { kind: string; version: number } | null;
 };
+export type ContentVerdict = "approved" | "rejected" | "changes";
+export type PortalContent = {
+  id: string; title: string; format: ContentFormat; publish_date: string; objective: string; script: string; caption: string;
+  project_id: string; content_version: number; review: { kind: ContentVerdict; version: number } | null;
+};
+export type ContentEventKind = "comment" | ContentVerdict;
+export type ContentEvent = { id: string; kind: ContentEventKind; body: string; version: number; author: string; created_at: string };
+export type ContentSummary = { id: string; review: { kind: ContentVerdict; version: number; created_at: string } | null; last_by_client: boolean | null };
 export type PortalNote = { id: string; title: string; body: string; project_id: string | null };
 export type PortalSpace = PortalArea & {
-  description: string; permission: AccessLevel | "owner"; projects: PortalArea[]; tasks: PortalTask[]; notes: PortalNote[];
+  description: string; permission: AccessLevel | "owner"; projects: PortalArea[]; tasks: PortalTask[]; notes: PortalNote[]; contents?: PortalContent[];
 };
 export type Attachment = { id: string; name: string; mime: string };
 export type ActivityKind = "comment" | "requested" | "approved" | "changes";
@@ -48,6 +57,15 @@ export const portalRepository = {
   },
   async edit(item: string, new_title: string, message: string, expected_version: number) {
     unwrap(await supabase.rpc("cerne_activity", { item, action: "edit", new_title, message, expected_version }));
+  },
+  async contentEvents(item: string, action: ContentEventKind | "list", message?: string, expected_version?: number): Promise<ContentEvent[]> {
+    return unwrap(await supabase.rpc("cerne_content", { item, action, message, expected_version }));
+  },
+  /** Respostas do cliente por conteúdo. Vazio se a migração de revisão ainda não rodou. */
+  async contentSummary(project?: string): Promise<ContentSummary[]> {
+    const res = await supabase.rpc("cerne_content_summary", { project: project ?? null });
+    if (res.error?.code === "PGRST202" || res.error?.code === "42883") return [];
+    return unwrap(res);
   },
   async files(item: string, entity: "task" | "note"): Promise<Attachment[]> {
     return unwrap(await supabase.rpc("cerne_files", { item, entity, action: "list" }));

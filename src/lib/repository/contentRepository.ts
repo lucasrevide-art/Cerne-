@@ -3,11 +3,11 @@ import { contentFromRow } from "../supabase/mappers.ts";
 import type { ContentItem } from "../../types.ts";
 import { fetchAll, isMissingTable, unwrap } from "./util.ts";
 
-type Fields = Pick<ContentItem, "date" | "title" | "format" | "status" | "objective" | "script" | "caption">;
+type Fields = Pick<ContentItem, "date" | "title" | "format" | "status" | "objective" | "script" | "caption"> & { shared?: boolean };
 
 const toRow = (f: Partial<Fields>): Record<string, unknown> => {
-  const { date, ...rest } = f;
-  return { ...rest, ...(date !== undefined ? { publish_date: date } : {}) };
+  const { date, shared, ...rest } = f;
+  return { ...rest, ...(date !== undefined ? { publish_date: date } : {}), ...(shared !== undefined ? { shared } : {}) };
 };
 
 export const contentRepository = {

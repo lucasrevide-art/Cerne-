@@ -108,6 +108,8 @@ create table content_items (
   objective text not null default '',
   script text not null default '',
   caption text not null default '',
+  shared boolean not null default false,
+  content_version integer not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -144,4 +146,4 @@ end $$;
 alter publication supabase_realtime add table areas, projects, tags, board_columns, tasks, task_tags, subtasks, notes, content_items, recurrences;
 
 -- For the current schema, apply migration_workspaces.sql and then
--- migration_client_portal.sql after this baseline.
+-- migration_client_portal.sql and migration_content_review.sql after this baseline.

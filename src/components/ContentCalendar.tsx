@@ -1,77 +1,76 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clapperboard, FileText, Image, Images, Smartphone, Trash2, Video, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Send, Trash2, X } from "lucide-react";
 import { Dialog } from "./ui/Dialog.tsx";
 import { Select } from "./ui/Select.tsx";
+import { Switch } from "./ui/Switch.tsx";
 import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { Notice } from "./Notice.tsx";
+import { ContentFeedback } from "./ContentFeedback.tsx";
+import { ContentMonth } from "./ContentMonth.tsx";
 import { useDataStore } from "../stores/dataStore.ts";
-import { shiftMonth } from "../lib/calendar.ts";
-import { todayISO } from "../lib/lenses.ts";
+import { portalRepository, type ContentSummary } from "../lib/repository/portalRepository.ts";
 import {
-  FORMATS, STATUSES, WEEK_HEADS, contentByDate, displayTitle, draftChanged, draftHasContent, emptyDraft,
-  formatLabel, longDate, monthCells, monthTitle, nextTitle, weekOfMonth, weekdayShort,
-  type ContentDraft,
+  FORMATS, STATUSES, displayTitle, draftChanged, draftHasContent, emptyDraft, longDate, nextTitle, verdictOf, weekOfMonth, weekdayShort,
+  type ContentDraft, type Verdict,
 } from "../lib/content.ts";
 import type { ContentFormat, ContentItem } from "../types.ts";
-
-const ICONS: Record<ContentFormat, ReactNode> = {
-  reels: <Clapperboard />, static: <Image />, carousel: <Images />, story: <Smartphone />, video: <Video />, text: <FileText />,
-};
-
-const FormatChip = ({ format }: { format: ContentFormat }) => <span className="content-chip">{ICONS[format]}{formatLabel(format)}</span>;
 
 type Editing = { item: ContentItem } | { date: string };
 
 export function ContentCalendar({ projectId, readOnly }: { projectId: string; readOnly?: boolean }) {
   const contents = useDataStore((s) => s.contents);
   const enabled = useDataStore((s) => s.contentEnabled);
-  const [anchor, setAnchor] = useState(() => `${todayISO().slice(0, 8)}01`);
+  const portal = useDataStore((s) => s.portalEnabled);
+  const project = useDataStore((s) => s.projects.find((p) => p.id === projectId));
+  const updateContent = useDataStore((s) => s.updateContent);
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [summary, setSummary] = useState<ContentSummary[]>([]);
   const mine = useMemo(() => contents.filter((c) => c.projectId === projectId), [contents, projectId]);
-  const byDate = useMemo(() => contentByDate(mine), [mine]);
-  const today = todayISO();
-  const cells = monthCells(anchor);
-  const inMonth = mine.filter((c) => c.date.startsWith(anchor.slice(0, 7))).length;
+
+  const refreshSummary = useCallback(() => {
+    if (!portal) return;
+    portalRepository.contentSummary(projectId).then(setSummary).catch(() => setSummary([]));
+  }, [portal, projectId]);
+  useEffect(() => {
+    refreshSummary();
+    const onFocus = () => { if (document.visibilityState === "visible") refreshSummary(); };
+    document.addEventListener("visibilitychange", onFocus);
+    const timer = setInterval(onFocus, 30000);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onFocus); };
+  }, [refreshSummary]);
+
+  const verdicts = useMemo(() => {
+    const reviews = new Map(summary.map((s) => [s.id, s.review]));
+    return new Map<string, Verdict | null>(mine.map((c) => [c.id, verdictOf(c.shared, c.contentVersion, reviews.get(c.id))]));
+  }, [mine, summary]);
 
   if (!enabled) return <Notice tone="warning" title="O calendário ainda não está ativo no banco">
     Falta rodar a atualização <code>migration_content_calendar.sql</code> no Supabase. Depois recarregue a página.
   </Notice>;
 
-  return <section className="content-cal" aria-label="Calendário de conteúdo">
-    <header className="content-cal-head">
-      <span className="content-badge"><CalendarDays />Cronograma de conteúdos</span>
-      <div className="content-cal-title">
-        <button className="btn ghost icon" aria-label="Mês anterior" onClick={() => setAnchor(shiftMonth(anchor, -1))}><ChevronLeft /></button>
-        <h3>{monthTitle(anchor)}</h3>
-        <button className="btn ghost icon" aria-label="Próximo mês" onClick={() => setAnchor(shiftMonth(anchor, 1))}><ChevronRight /></button>
-      </div>
-      <p className="content-cal-count">{inMonth ? `${inMonth} ${inMonth === 1 ? "conteúdo" : "conteúdos"} neste mês` : "Nenhum conteúdo neste mês. Clique em um dia para começar."}</p>
-    </header>
-    <div className="content-weekdays" aria-hidden="true">{WEEK_HEADS.map((d) => <span key={d}>{d}</span>)}</div>
-    <div className="content-grid">
-      {cells.map((day, i) => {
-        if (!day) return <span key={`blank-${i}`} className="content-blank" aria-hidden="true" />;
-        const items = byDate.get(day) ?? [];
-        const first = items[0];
-        const label = `${longDate(day)}${first ? `: ${displayTitle(first)}` : ", a definir"}`;
-        return <button key={day} type="button" className={`content-cell${first ? " filled" : ""}${day === today ? " today" : ""}`} aria-label={label}
-          disabled={!first && readOnly} onClick={() => setEditing(first ? { item: first } : { date: day })}>
-          <span className="content-cell-top"><strong>{Number(day.slice(8))}</strong><small>{weekdayShort(day)}</small></span>
-          {first ? <>
-            <FormatChip format={first.format} />
-            <span className="content-cell-text">{first.objective.trim() || displayTitle(first)}</span>
-            {items.length > 1 && <span className="content-more">+{items.length - 1} no mesmo dia</span>}
-          </> : <em>a definir</em>}
-        </button>;
-      })}
-    </div>
+  const hidden = mine.filter((c) => !c.shared);
+  const sendAll = async () => {
+    const month = hidden.length;
+    if (!await confirmAction({ title: "Mostrar ao cliente?", description: `${month} ${month === 1 ? "conteúdo passa" : "conteúdos passam"} a aparecer para quem tem acesso ao projeto.`, label: "Mostrar ao cliente" })) return;
+    for (const c of hidden) await updateContent(c.id, { shared: true });
+  };
+
+  const note = portal && !readOnly ? <div className="content-share-note">
+    {project && !project.shared && <Notice tone="info" title="Projeto ainda interno">Para o cliente ver o calendário, use “Compartilhar projeto” no menu ⋯ do projeto e convide o cliente na área.</Notice>}
+    {!!hidden.length && <button className="btn outline" onClick={() => void sendAll()}><Send />Mostrar {hidden.length === mine.length ? "todos" : `os ${hidden.length} que faltam`} ao cliente</button>}
+  </div> : null;
+
+  return <>
+    <ContentMonth items={mine.map((c) => ({ ...c, date: c.date }))} verdicts={verdicts} canCreate={!readOnly} note={note}
+      onOpen={(id, date) => setEditing(id ? { item: mine.find((c) => c.id === id)! } : { date })} />
     {editing && <ContentDialog key={"item" in editing ? editing.item.id : editing.date} projectId={projectId} editing={editing} readOnly={!!readOnly}
-      siblings={mine} onClose={() => setEditing(null)} onPick={(item) => setEditing({ item })} />}
-  </section>;
+      portal={portal} siblings={mine} onClose={() => { setEditing(null); refreshSummary(); }}
+      onPick={(item) => setEditing({ item })} />}
+  </>;
 }
 
-function ContentDialog({ projectId, editing, siblings, readOnly, onClose, onPick }: {
-  projectId: string; editing: Editing; siblings: ContentItem[]; readOnly: boolean; onClose: () => void; onPick: (item: ContentItem) => void;
+function ContentDialog({ projectId, editing, siblings, readOnly, portal, onClose, onPick }: {
+  projectId: string; editing: Editing; siblings: ContentItem[]; readOnly: boolean; portal: boolean; onClose: () => void; onPick: (item: ContentItem) => void;
 }) {
   const addContent = useDataStore((s) => s.addContent);
   const updateContent = useDataStore((s) => s.updateContent);
@@ -79,14 +78,13 @@ function ContentDialog({ projectId, editing, siblings, readOnly, onClose, onPick
   const existing = "item" in editing ? editing.item : null;
   const autoTitle = nextTitle(siblings);
   const initial: ContentDraft = existing
-    ? { date: existing.date, title: existing.title, format: existing.format, status: existing.status, objective: existing.objective, script: existing.script, caption: existing.caption }
+    ? { date: existing.date, title: existing.title, format: existing.format, status: existing.status, objective: existing.objective, script: existing.script, caption: existing.caption, shared: existing.shared }
     : emptyDraft((editing as { date: string }).date, autoTitle);
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof ContentDraft>(key: K, value: ContentDraft[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const dayItems = siblings.filter((c) => c.date === draft.date);
   const dirty = draftChanged(initial, draft);
-  const [, , day] = draft.date.split("-");
 
   const save = async (): Promise<boolean> => {
     if (readOnly) return true;
@@ -108,7 +106,7 @@ function ContentDialog({ projectId, editing, siblings, readOnly, onClose, onPick
 
   return <Dialog title={displayTitle(draft)} onClose={() => void close()} className="content-modal" closeButton={false}>
     <header className="content-modal-head">
-      <span className="content-date" aria-hidden="true"><strong>{Number(day)}</strong><small>{weekdayShort(draft.date)}</small></span>
+      <span className="content-date" aria-hidden="true"><strong>{Number(draft.date.slice(8))}</strong><small>{weekdayShort(draft.date)}</small></span>
       <div>
         <input className="content-title-input" aria-label="Título do conteúdo" value={draft.title} placeholder={autoTitle} readOnly={readOnly}
           onChange={(e) => set("title", e.target.value)} />
@@ -132,6 +130,11 @@ function ContentDialog({ projectId, editing, siblings, readOnly, onClose, onPick
         <textarea rows={6} value={draft.script} readOnly={readOnly} placeholder="Estrutura, falas, texto de cada slide…" onChange={(e) => set("script", e.target.value)} /></label>
       <label className="content-block">Legenda
         <textarea rows={6} value={draft.caption} readOnly={readOnly} placeholder="Texto que acompanha a publicação" onChange={(e) => set("caption", e.target.value)} /></label>
+      {portal && !readOnly && <div className="content-share-row">
+        <Switch label="Mostrar ao cliente" checked={draft.shared} onChange={(v) => set("shared", v)} />
+        <small>O cliente só vê este conteúdo se o projeto também estiver compartilhado.</small>
+      </div>}
+      {portal && existing?.shared && <ContentFeedback id={existing.id} version={existing.contentVersion} permission="owner" />}
     </div>
     <footer className="modal-actions content-modal-actions">
       {existing && !readOnly && <button className="btn ghost destructive-text" onClick={() => void remove()}><Trash2 />Excluir</button>}

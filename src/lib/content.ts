@@ -67,9 +67,9 @@ export const weekOfMonth = (iso: string): number => {
 };
 
 /** Agrupa por dia, mais antigo primeiro dentro do dia. */
-export const contentByDate = (items: ContentItem[]): Map<string, ContentItem[]> => {
-  const map = new Map<string, ContentItem[]>();
-  for (const item of [...items].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))) {
+export const contentByDate = <T extends { id: string; date: string; createdAt?: string }>(items: T[]): Map<string, T[]> => {
+  const map = new Map<string, T[]>();
+  for (const item of [...items].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "") || a.id.localeCompare(b.id))) {
     const list = map.get(item.date) ?? [];
     list.push(item);
     map.set(item.date, list);
@@ -82,10 +82,10 @@ export const nextTitle = (items: ContentItem[]): string => `Conteúdo ${items.le
 
 export const displayTitle = (item: Pick<ContentItem, "title">): string => item.title.trim() || "Conteúdo sem título";
 
-export type ContentDraft = Pick<ContentItem, "date" | "title" | "format" | "status" | "objective" | "script" | "caption">;
+export type ContentDraft = Pick<ContentItem, "date" | "title" | "format" | "status" | "objective" | "script" | "caption" | "shared">;
 
 export const emptyDraft = (date: string, title = ""): ContentDraft => ({
-  date, title, format: "reels", status: "idea", objective: "", script: "", caption: "",
+  date, title, format: "reels", status: "idea", objective: "", script: "", caption: "", shared: false,
 });
 
 /** Rascunho novo só vale a pena guardar se alguém escreveu alguma coisa além do título automático. */
@@ -94,3 +94,24 @@ export const draftHasContent = (d: ContentDraft, autoTitle: string): boolean =>
 
 export const draftChanged = (a: ContentDraft, b: ContentDraft): boolean =>
   (Object.keys(a) as (keyof ContentDraft)[]).some((k) => a[k] !== b[k]);
+
+export type Verdict = "approved" | "rejected" | "changes" | "stale" | "waiting";
+export const VERDICT_LABEL: Record<Verdict, string> = {
+  approved: "Aprovado", rejected: "Reprovado", changes: "Alteração pedida", stale: "Mudou após a resposta", waiting: "Aguardando cliente",
+};
+
+/**
+ * Situação do conteúdo diante do cliente. `null` = não foi enviado ao cliente.
+ * Uma resposta de versão antiga ("stale") não vale mais para o conteúdo atual.
+ */
+export const verdictOf = (
+  shared: boolean, version: number, review: { kind: "approved" | "rejected" | "changes"; version: number } | null | undefined,
+): Verdict | null => {
+  if (!shared) return null;
+  if (!review) return "waiting";
+  return review.version === version ? review.kind : "stale";
+};
+
+/** Conteúdos que ainda precisam de uma resposta do cliente na versão atual. */
+export const needsAnswer = (items: { content_version: number; review: { version: number } | null }[]): number =>
+  items.filter((i) => !i.review || i.review.version !== i.content_version).length;

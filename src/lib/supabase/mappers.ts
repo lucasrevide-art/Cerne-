@@ -98,5 +98,5 @@ export const noteTitle = (body: string): string =>
 export const contentFromRow = (r: Row): ContentItem => ({
   id: r.id, projectId: r.project_id, date: r.publish_date, title: r.title ?? "",
   format: r.format, status: r.status, objective: r.objective ?? "", script: r.script ?? "",
-  caption: r.caption ?? "", createdAt: r.created_at, updatedAt: r.updated_at,
+  caption: r.caption ?? "", shared: !!r.shared, contentVersion: r.content_version ?? 1, createdAt: r.created_at, updatedAt: r.updated_at,
 });

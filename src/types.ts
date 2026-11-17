@@ -114,6 +114,9 @@ export interface ContentItem {
   /** Roteiro ou desenvolvimento do conteúdo. */
   script: string;
   caption: string;
+  /** Visível para o cliente no portal (o projeto também precisa estar compartilhado). */
+  shared: boolean;
+  contentVersion: number;
   createdAt: string;
   updatedAt: string;
 }

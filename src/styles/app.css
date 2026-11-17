@@ -822,3 +822,42 @@ button.project-card:hover, .note-card:hover { box-shadow: inset 0 0 0 2px var(--
   .content-fields { grid-template-columns: 1fr; }
   .content-modal-head, .content-modal-body, .content-modal-actions { padding-inline: 16px; }
 }
+
+/* Resposta do cliente ao conteúdo */
+.verdict-tag { white-space: nowrap; max-width: 100%; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--secondary); color: var(--foreground); }
+.verdict-tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted-foreground); }
+.verdict-tag[data-verdict="approved"]::before { background: var(--success); }
+.verdict-tag[data-verdict="rejected"]::before { background: var(--destructive); }
+.verdict-tag[data-verdict="changes"]::before, .verdict-tag[data-verdict="stale"]::before { background: var(--butter); box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground), transparent 70%); }
+.content-cell .verdict-tag { margin-top: auto; }
+.content-share-note { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); max-width: 560px; text-align: left; }
+.content-share-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--muted); }
+.content-share-row small { color: var(--muted-foreground); }
+.content-feedback { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.content-feedback-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.content-feedback h4, .content-read h4 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
+.verdict-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.verdict-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 2px solid transparent; font-size: 14px; font-weight: 600; transition: filter var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.verdict-btn svg { width: 16px; height: 16px; }
+.verdict-btn[data-verdict="approved"] { background: var(--success); color: #fff; }
+.verdict-btn[data-verdict="changes"] { background: var(--butter); color: #000; }
+.verdict-btn[data-verdict="rejected"] { background: var(--destructive); color: #fff; }
+.verdict-btn:hover:not(:disabled) { filter: brightness(0.94); }
+.verdict-btn[data-on="true"] { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--foreground); }
+.verdict-btn:disabled { opacity: 0.5; }
+.content-feedback-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.content-feedback-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.content-event { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--muted); border-left: 4px solid var(--border); }
+.content-event[data-kind="approved"] { border-left-color: var(--success); }
+.content-event[data-kind="rejected"] { border-left-color: var(--destructive); }
+.content-event[data-kind="changes"] { border-left-color: var(--butter); }
+.content-event p { margin: 4px 0 0; white-space: pre-wrap; }
+.content-event small { color: var(--muted-foreground); }
+.content-modal-title { margin: 0; padding-left: 12px; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.content-read-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.content-read { display: flex; flex-direction: column; gap: 8px; }
+.content-read p { margin: 0; white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+.content-read-card { padding: 16px 18px; border-radius: 14px; background: var(--muted); }
+.portal-sections { margin: var(--space-3) 0; }
+.tab-count { margin-left: 8px; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--foreground); color: var(--background); font-size: 12px; line-height: 20px; text-align: center; display: inline-block; }
+.portal-calendar-filter { max-width: 280px; margin-bottom: var(--space-3); }

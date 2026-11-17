@@ -56,3 +56,23 @@ test("título automático e rascunho vazio não são guardados", () => {
   assert.equal(draftChanged(d, { ...d }), false);
   assert.equal(draftChanged(d, { ...d, format: "story" }), true);
 });
+
+import { needsAnswer, verdictOf } from "../src/lib/content.ts";
+
+test("situação diante do cliente", () => {
+  assert.equal(verdictOf(false, 1, null), null);
+  assert.equal(verdictOf(true, 1, null), "waiting");
+  assert.equal(verdictOf(true, 1, { kind: "approved", version: 1 }), "approved");
+  assert.equal(verdictOf(true, 1, { kind: "changes", version: 1 }), "changes");
+  assert.equal(verdictOf(true, 1, { kind: "rejected", version: 1 }), "rejected");
+  // o conteúdo mudou depois da resposta: a resposta antiga não vale mais
+  assert.equal(verdictOf(true, 2, { kind: "approved", version: 1 }), "stale");
+});
+
+test("conta o que ainda precisa de resposta na versão atual", () => {
+  assert.equal(needsAnswer([
+    { content_version: 1, review: null },
+    { content_version: 2, review: { version: 1 } },
+    { content_version: 1, review: { version: 1 } },
+  ]), 2);
+});
