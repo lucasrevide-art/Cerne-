@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Send, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { Dialog } from "./ui/Dialog.tsx";
 import { Select } from "./ui/Select.tsx";
-import { Switch } from "./ui/Switch.tsx";
 import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { Notice } from "./Notice.tsx";
 import { ContentFeedback } from "./ContentFeedback.tsx";
@@ -21,8 +20,6 @@ export function ContentCalendar({ projectId, readOnly }: { projectId: string; re
   const contents = useDataStore((s) => s.contents);
   const enabled = useDataStore((s) => s.contentEnabled);
   const portal = useDataStore((s) => s.portalEnabled);
-  const project = useDataStore((s) => s.projects.find((p) => p.id === projectId));
-  const updateContent = useDataStore((s) => s.updateContent);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [summary, setSummary] = useState<ContentSummary[]>([]);
   const mine = useMemo(() => contents.filter((c) => c.projectId === projectId), [contents, projectId]);
@@ -41,27 +38,15 @@ export function ContentCalendar({ projectId, readOnly }: { projectId: string; re
 
   const verdicts = useMemo(() => {
     const reviews = new Map(summary.map((s) => [s.id, s.review]));
-    return new Map<string, Verdict | null>(mine.map((c) => [c.id, verdictOf(c.shared, c.contentVersion, reviews.get(c.id))]));
+    return new Map<string, Verdict | null>(mine.map((c) => [c.id, (reviews.get(c.id) ? verdictOf(true, c.contentVersion, reviews.get(c.id)) : null)]));
   }, [mine, summary]);
 
   if (!enabled) return <Notice tone="warning" title="O calendário ainda não está ativo no banco">
     Falta rodar a atualização <code>migration_content_calendar.sql</code> no Supabase. Depois recarregue a página.
   </Notice>;
 
-  const hidden = mine.filter((c) => !c.shared);
-  const sendAll = async () => {
-    const month = hidden.length;
-    if (!await confirmAction({ title: "Mostrar ao cliente?", description: `${month} ${month === 1 ? "conteúdo passa" : "conteúdos passam"} a aparecer para quem tem acesso ao projeto.`, label: "Mostrar ao cliente" })) return;
-    for (const c of hidden) await updateContent(c.id, { shared: true });
-  };
-
-  const note = portal && !readOnly ? <div className="content-share-note">
-    {project && !project.shared && <Notice tone="info" title="Projeto ainda interno">Para o cliente ver o calendário, use “Compartilhar projeto” no menu ⋯ do projeto e convide o cliente na área.</Notice>}
-    {!!hidden.length && <button className="btn outline" onClick={() => void sendAll()}><Send />Mostrar {hidden.length === mine.length ? "todos" : `os ${hidden.length} que faltam`} ao cliente</button>}
-  </div> : null;
-
   return <>
-    <ContentMonth items={mine.map((c) => ({ ...c, date: c.date }))} verdicts={verdicts} canCreate={!readOnly} note={note}
+    <ContentMonth items={mine.map((c) => ({ ...c, date: c.date }))} verdicts={verdicts} canCreate={!readOnly}
       onOpen={(id, date) => setEditing(id ? { item: mine.find((c) => c.id === id)! } : { date })} />
     {editing && <ContentDialog key={"item" in editing ? editing.item.id : editing.date} projectId={projectId} editing={editing} readOnly={!!readOnly}
       portal={portal} siblings={mine} onClose={() => { setEditing(null); refreshSummary(); }}
@@ -130,11 +115,7 @@ function ContentDialog({ projectId, editing, siblings, readOnly, portal, onClose
         <textarea rows={6} value={draft.script} readOnly={readOnly} placeholder="Estrutura, falas, texto de cada slide…" onChange={(e) => set("script", e.target.value)} /></label>
       <label className="content-block">Legenda
         <textarea rows={6} value={draft.caption} readOnly={readOnly} placeholder="Texto que acompanha a publicação" onChange={(e) => set("caption", e.target.value)} /></label>
-      {portal && !readOnly && <div className="content-share-row">
-        <Switch label="Mostrar ao cliente" checked={draft.shared} onChange={(v) => set("shared", v)} />
-        <small>O cliente só vê este conteúdo se o projeto também estiver compartilhado.</small>
-      </div>}
-      {portal && existing?.shared && <ContentFeedback id={existing.id} version={existing.contentVersion} permission="owner" />}
+      {portal && existing && <ContentFeedback id={existing.id} version={existing.contentVersion} permission="owner" />}
     </div>
     <footer className="modal-actions content-modal-actions">
       {existing && !readOnly && <button className="btn ghost destructive-text" onClick={() => void remove()}><Trash2 />Excluir</button>}

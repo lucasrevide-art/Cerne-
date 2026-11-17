@@ -2,7 +2,6 @@ import { Select } from "./ui/Select.tsx";
 import { Check, Trash2, X } from "lucide-react";
 import { ActionMenu, MenuItem } from "./ui/ActionMenu.tsx";
 import { Dialog } from "./ui/Dialog.tsx";
-import { Switch } from "./ui/Switch.tsx";
 import { confirmAction } from "./ui/ConfirmDialog.tsx";
 import { useEffect, useState } from "react";
 import { ItemFiles } from "./ItemFiles.tsx";
@@ -167,14 +166,6 @@ export function TaskEditor() {
           </label>
         </div>
         {scoped && !draft.areaId && !draft.projectId && <label className="inline"><input type="checkbox" checked={draft.inbox ?? inInbox(draft)} onChange={(e) => set("inbox", e.target.checked)} /> Manter na Entrada</label>}
-        {portal && draft.areaId && <Switch checked={!!draft.shared} disabled={!!unavailable || (!!activeProject && !activeProject.shared)}
-          label={activeProject && !activeProject.shared ? "Compartilhar no portal (projeto interno)" : "Compartilhar no portal"}
-          onChange={async (checked) => {
-            if (!checked || await confirmAction({
-              title: "Compartilhar tarefa?", description: "Pessoas com acesso à área poderão consultar o título, a descrição e os arquivos.",
-              label: "Compartilhar",
-            })) set("shared", checked);
-          }} />}
         <details className="item-section">
           <summary>Agendamento{draft.startTime ? ` · ${draft.startTime.slice(0, 5)}` : ""}</summary>
           <div className="form-grid">
@@ -250,7 +241,7 @@ export function TaskEditor() {
         {portal && task && <>
           <ItemFiles key={task.id} id={task.id} entity="task" editable={!unavailable} onChange={() => void load()} />
           <TaskActivity key={task.id} id={task.id} version={task.contentVersion ?? 1} permission="owner"
-            shared={!dirty && task.shared && !unavailable && (!activeProject || activeProject.shared)} />
+            shared={!dirty && !unavailable && !!task.areaId} />
         </>}
         {error && <p className="error" role="alert">{error}</p>}
         <div className="modal-actions editor-footer">

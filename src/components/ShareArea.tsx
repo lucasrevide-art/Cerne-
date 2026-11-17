@@ -32,7 +32,7 @@ export function ShareArea({ area, close }: { area: Area; close: () => void }) {
 
   return (
     <Dialog title={`Compartilhar ${area.name}`} onClose={close}>
-        <Notice tone="info" title="Visibilidade no portal" icon={<EyeOff />}>O cliente vê o nome e a descrição da área e os itens marcados como compartilhados. Projetos internos e novos itens ficam privados.</Notice>
+        <Notice tone="info" title="Visibilidade no portal" icon={<EyeOff />}>Quem tiver acesso vê a pasta inteira: projetos, tarefas, notas, arquivos e calendários de conteúdo, inclusive o que você criar depois. Comentários marcados como internos continuam só seus.</Notice>
         <form className="stack" onSubmit={(e) => {
           e.preventDefault();
           if (busy) return;

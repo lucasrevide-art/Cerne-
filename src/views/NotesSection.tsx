@@ -1,6 +1,5 @@
 import { ArrowLeft, FileText, Plus, Trash2 } from "lucide-react";
 import { confirmAction } from "../components/ui/ConfirmDialog.tsx";
-import { Switch } from "../components/ui/Switch.tsx";
 import { useState } from "react";
 import { noteTitle } from "../lib/supabase/mappers.ts";
 import { useDataStore } from "../stores/dataStore.ts";
@@ -26,7 +25,6 @@ export function NotesSection({ areaId, projectId, readOnly, noteId }: {
       {list.map((n) => <button key={n.id} className="note-card" onClick={() => setOpenId(n.id)}>
         <strong><FileText />{n.title || noteTitle(n.body)}</strong>
         <span>{projects.find((p) => p.id === n.projectId)?.name}</span>
-        {n.shared !== undefined && <small>{n.shared ? "Compartilhada" : "Interna"}</small>}
       </button>)}
       {!readOnly && (!projectId || scoped) && <button className="note-card new" disabled={busy} onClick={async () => {
         setBusy(true); const created = await addNote(areaId, projectId); setBusy(false);
@@ -68,7 +66,6 @@ function NoteEditor({ note, onBack, readOnly }: { note: Note; onBack: () => void
       {scoped && <label>Título<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></label>}
       <label>Conteúdo<textarea className="note-body" rows={8} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} /></label>
       <small>Use **texto** para negrito. Links com https:// ficam clicáveis ao salvar.</small>
-      {portal && note.areaId && <Switch checked={draft.shared} onChange={(shared) => setDraft({ ...draft, shared })} label="Compartilhar no portal da área" />}
       <button className="btn" disabled={busy}>{busy ? "Salvando…" : "Salvar nota"}</button>
     </form> : <>
       <h3>{note.title || noteTitle(note.body)}</h3><FormattedNote body={note.body} />

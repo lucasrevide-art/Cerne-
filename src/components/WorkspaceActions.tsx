@@ -50,18 +50,12 @@ export function WorkspaceActions({ group, onPreview }: { group: Area | Project; 
     <div className="workspace-actions">
       <ActionMenu label={`Ações de ${group.name}`}>
           {!group.deletedAt && <MenuItem disabled={busy} onSelect={() => { setName(group.name); setDescription(isProject ? group.notes : group.description ?? ""); setPanel("edit"); }}><Pencil />Editar nome e descrição</MenuItem>}
-          {portal && !inactive && !group.deletedAt && (isProject ? (
-            <MenuItem disabled={busy || !group.areaId} onSelect={async () => {
-              if (group.shared || await confirmAction({ title: "Compartilhar projeto?", description: "O projeto aparece no portal da área. Cada tarefa e nota mantém sua própria visibilidade.", label: "Compartilhar" })) {
-                void run(() => updateProject(group.id, { shared: !group.shared }));
-              }
-            }}><Share2 />{group.shared ? "Tornar projeto interno" : "Compartilhar projeto"}</MenuItem>
-          ) : (
+          {portal && !inactive && !group.deletedAt && !isProject && (
             <>
               <MenuItem onSelect={() => setPanel("share")}><Share2 />Compartilhar e gerenciar acesso</MenuItem>
               {onPreview && <MenuItem onSelect={onPreview}><Eye />Ver como cliente</MenuItem>}
             </>
-          ))}
+          )}
           {(scoped || isProject) && !group.deletedAt && <MenuItem disabled={busy} onSelect={() => void lifecycle(inactive)}>{inactive ? <ArchiveRestore /> : <Archive />}{inactive ? "Restaurar do arquivo" : "Arquivar"}</MenuItem>}
           {scoped && !group.deletedAt && <><MenuSeparator /><MenuItem destructive disabled={busy} onSelect={() => void lifecycle(false, true)}><Trash2 />Mover para a lixeira…</MenuItem></>}
       </ActionMenu>

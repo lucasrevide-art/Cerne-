@@ -68,7 +68,7 @@ export function BoardView({ tasks, home, showProject, readOnly }: {
                     {task.deadline && <span>Prazo {shortDate(task.deadline)}</span>}
                     {task.priority >= 2 && <span className="chip prio">{task.priority === 3 ? "Urgente" : "Alta"}</span>}
                     {sub.total > 0 && <span aria-label="Checklist"><CheckSquare />{sub.done}/{sub.total}</span>}
-                    {task.shared && <span className="chip">Compartilhada</span>}
+                    
                   </div>
                   {!readOnly && <div className="move-control"><Select label={`Mover ${task.title}`} value="" disabled={!!moving} onValueChange={(value) => {
                     const target = columns.find((column) => column.id === value);
